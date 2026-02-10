@@ -1,84 +1,76 @@
 {
-  "name": "prompt-translate-lens",
-  "displayName": "Prompt Translate Lens",
-  "description": "",
-  "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.109.0"
-  },
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onLanguage:markdown"
-  ],
-  "main": "./out/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "prompt-translate-lens.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        "command": "prompt-translate-lens.clearCache",
-        "title": "Prompt Translate Lens: Clear Translation Cache"
-      }
+    "name": "trans-prompt",
+    "displayName": "Translate Prompt File",
+    "description": "",
+    "version": "0.0.1",
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "test": "vscode-test"
+    },
+    "engines": {
+        "vscode": "^1.109.0"
+    },
+    "categories": [
+        "Other"
     ],
-    "configuration": {
-      "title": "Prompt Translate Lens",
-      "properties": {
-        "prompt-translate-lens.targetLanguage": {
-          "type": "string",
-          "default": "ko",
-          "description": "Target language code for translation (e.g., ko, ja, en, zh-CN)",
-          "enum": [
-            "ko",
-            "ja",
-            "en",
-            "zh-CN",
-            "zh-TW",
-            "fr",
-            "de",
-            "es",
-            "ru"
-          ],
-          "enumDescriptions": [
-            "Korean (한국어)",
-            "Japanese (日本語)",
-            "English",
-            "Chinese Simplified (简体中文)",
-            "Chinese Traditional (繁體中文)",
-            "French (Français)",
-            "German (Deutsch)",
-            "Spanish (Español)",
-            "Russian (Русский)"
-          ]
-        },
-        "prompt-translate-lens.googleApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "Google Cloud Translation API key",
-          "markdownDescription": "Google Cloud Translation API key. Get your API key from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)."
+    "activationEvents": [
+        "onLanguage:markdown"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "trans-prompt.clearCache",
+                "title": "Translate Prompt File: Clear Translation Cache"
+            }
+        ],
+        "configuration": {
+            "title": "Translate Prompt File",
+            "properties": {
+                "trans-prompt.targetLanguage": {
+                    "type": "string",
+                    "default": "ko",
+                    "description": "Target language code for translation (e.g., ko, ja, en, zh-CN)",
+                    "enum": [
+                        "ko",
+                        "ja",
+                        "en",
+                        "zh-CN",
+                        "zh-TW",
+                        "fr",
+                        "de",
+                        "es",
+                        "ru"
+                    ],
+                    "enumDescriptions": [
+                        "Korean (한국어)",
+                        "Japanese (日本語)",
+                        "English",
+                        "Chinese Simplified (简体中文)",
+                        "Chinese Traditional (繁體中文)",
+                        "French (Français)",
+                        "German (Deutsch)",
+                        "Spanish (Español)",
+                        "Russian (Русский)"
+                    ]
+                },
+                "trans-prompt.googleApiKey": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Google Cloud Translation API key",
+                    "markdownDescription": "Google Cloud Translation API key. Get your API key from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)."
+                }
+            }
         }
-      }
+    },
+    "devDependencies": {
+        "@types/mocha": "^10.0.10",
+        "@types/node": "^22.19.10",
+        "@types/vscode": "^1.109.0",
+        "@vscode/test-cli": "^0.0.12",
+        "@vscode/test-electron": "^2.5.2",
+        "typescript": "^5.9.3"
     }
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test"
-  },
-  "devDependencies": {
-    "@types/mocha": "^10.0.10",
-    "@types/node": "^22.19.10",
-    "@types/vscode": "^1.109.0",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2",
-    "eslint": "^9.39.2",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.54.0"
-  }
 }

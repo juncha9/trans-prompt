@@ -1,7 +1,8 @@
-import { createHash } from 'crypto';
+import * as crypto from 'crypto';
 import type { Memento } from 'vscode';
+import { PACKAGE_NAME } from './_defs';
 
-const CACHE_KEY = 'prompt-translate-lens:translations';
+const CACHE_KEY = `${PACKAGE_NAME}:translations`;
 
 interface CacheData {
     [hash: string]: string;
@@ -22,7 +23,7 @@ export class TranslationCache {
     }
 
     private hash(text: string, to: string): string {
-        return `${to}:${createHash('sha256').update(text).digest('hex')}`;
+        return `${to}:${crypto.createHash('sha256').update(text).digest('hex')}`;
     }
 
     get(text: string, to: string): string | undefined {
