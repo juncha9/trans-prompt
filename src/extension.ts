@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { TranslationCache } from './cache';
+import { TranslationCache } from './translation-cache';
+import { GcpTranslator } from './gcp-translator';
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -7,7 +8,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// 설정 가져오기
 	function getConfig() {
-		const config = vscode.workspace.getConfiguration('prompt-translate-lens');
+		const config = vscode.workspace.getConfiguration('trans-prompt');
 		return {
 			targetLanguage: config.get<string>('targetLanguage', 'ko'),
 			googleApiKey: config.get<string>('googleApiKey', '')
@@ -16,9 +17,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// 캐시 클리어 커맨드
 	context.subscriptions.push(
-		vscode.commands.registerCommand('prompt-translate-lens.clearCache', async () => {
+		vscode.commands.registerCommand('trans-prompt.clearCache', async () => {
 			await cache.clear();
-			vscode.window.showInformationMessage(`Prompt Translate Lens: 번역 캐시를 비웠습니다.`);
+			vscode.window.showInformationMessage(`Trans Prompt: 번역 캐시를 비웠습니다. (${cache.size}개 항목)`);
 		})
 	);
 
@@ -35,16 +36,21 @@ export function activate(context: vscode.ExtensionContext) {
     let activeEditor = vscode.window.activeTextEditor;
 
     async function updateDecorations() {
-        if (!activeEditor || activeEditor.document.languageId !== 'markdown') return;
+        if (!activeEditor || activeEditor.document.languageId !== 'markdown') {
+			return;
+		}
 
         const config = getConfig();
         const targetLang = config.targetLanguage;
         const apiKey = config.googleApiKey;
 
         if (!apiKey) {
-            // API 키가 없으면 경고 표시 (처음 한 번만)
-            // TODO: 필요시 처음 한 번만 표시하도록 개선
+            // API 키가 없으면 경고 (TODO: 첫 실행 시에만 표시)
+            console.warn('Trans Prompt: Google API key not configured');
+            return;
         }
+
+		const translator = new GcpTranslator(apiKey);
 
         const decorations: vscode.DecorationOptions[] = [];
         const text = activeEditor.document.getText();
@@ -73,14 +79,22 @@ export function activate(context: vscode.ExtensionContext) {
 
             for (const i of para) {
                 const lineText = lines[i].trim();
-                if (!lineText) { continue; }
+                if (!lineText) {
+					continue;
+				}
 
                 // 캐시 확인 → 없으면 번역 API 호출 → 캐시 저장
                 let translatedText = cache.get(lineText, targetLang);
-                if (!translatedText) {
-                    // TODO: 실제 번역 API 호출로 교체
-                    translatedText = `(번역: ${lineText}에 대한 ${targetLang} 내용)`;
-                    await cache.set(lineText, targetLang, translatedText);
+                
+				if (!translatedText) {
+                    try {
+						// GCP Translation API 호출
+                        translatedText = await translator.translate(lineText, targetLang);
+                        await cache.set(lineText, targetLang, translatedText);
+                    } catch (error) {
+                        console.error('Translation error:', error);
+                        translatedText = `(번역 오류)`;
+                    }
                 }
 
                 const padding = maxLen - lines[i].length + gap;
@@ -117,8 +131,6 @@ export function activate(context: vscode.ExtensionContext) {
             updateDecorations();
         }
     }, null, context.subscriptions);
-
-	//context.subscriptions.push(disposable);
 }
 
 // This method is called when your extension is deactivated

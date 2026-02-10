@@ -1,52 +1,54 @@
-import * as crypto from 'crypto';
 import type { Memento } from 'vscode';
-import { PACKAGE_NAME } from './_defs';
 
-const CACHE_KEY = `${PACKAGE_NAME}:translations`;
-
-interface CacheData {
-    [hash: string]: string;
-}
-
-export class TranslationCache {
-    private memory = new Map<string, string>();
+/**
+ * 범용 키-값 캐시 저장소
+ * VSCode Memento를 사용한 영구 저장소입니다.
+ */
+export class Cache {
     private state: Memento;
+    private namespace: string;
 
-    constructor(globalState: Memento) {
+    constructor(globalState: Memento, namespace: string) {
         this.state = globalState;
-
-        // globalState → 메모리로 로드 (시작 시 1회)
-        const stored = this.state.get<CacheData>(CACHE_KEY, {});
-        for (const [key, value] of Object.entries(stored)) {
-            this.memory.set(key, value);
-        }
+        this.namespace = namespace;
     }
 
-    private hash(text: string, to: string): string {
-        return `${to}:${crypto.createHash('sha256').update(text).digest('hex')}`;
+    private getKey(): string {
+        return `cache:${this.namespace}`;
     }
 
-    get(text: string, to: string): string | undefined {
-        return this.memory.get(this.hash(text, to));
+    private getData(): Record<string, string> {
+        return this.state.get<Record<string, string>>(this.getKey(), {});
     }
 
-    async set(text: string, to: string, translation: string): Promise<void> {
-        const key = this.hash(text, to);
-        this.memory.set(key, translation);
-        await this.persist();
+    /**
+     * 캐시에서 값을 가져옵니다.
+     */
+    get(key: string): string | undefined {
+        const data = this.getData();
+        return data[key];
     }
 
+    /**
+     * 캐시에 값을 저장합니다.
+     */
+    async set(key: string, value: string): Promise<void> {
+        const data = this.getData();
+        data[key] = value;
+        await this.state.update(this.getKey(), data);
+    }
+
+    /**
+     * 캐시를 비웁니다.
+     */
     async clear(): Promise<void> {
-        this.memory.clear();
-        await this.state.update(CACHE_KEY, {});
+        await this.state.update(this.getKey(), {});
     }
 
+    /**
+     * 캐시 크기를 반환합니다.
+     */
     get size(): number {
-        return this.memory.size;
-    }
-
-    private async persist(): Promise<void> {
-        const data: CacheData = Object.fromEntries(this.memory);
-        await this.state.update(CACHE_KEY, data);
+        return Object.keys(this.getData()).length;
     }
 }
