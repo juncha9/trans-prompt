@@ -1,5 +1,5 @@
 /**
- * Google Cloud Translation API 클라이언트
+ * Google Cloud Translation API client.
  */
 export class GcpTranslator {
     private apiKey: string;
@@ -9,11 +9,11 @@ export class GcpTranslator {
     }
 
     /**
-     * 텍스트를 번역합니다.
-     * @param text 번역할 텍스트
-     * @param targetLang 대상 언어 코드 (예: 'ko', 'ja', 'en')
-     * @param sourceLang 원본 언어 코드 (기본값: 'en')
-     * @returns 번역된 텍스트
+     * Translates text.
+     * @param text - Text to translate
+     * @param targetLang - Target language code (e.g. 'ko', 'ja', 'en')
+     * @param sourceLang - Source language code (default: 'en')
+     * @returns Translated text
      */
     async translate(
         text: string,
@@ -43,14 +43,14 @@ export class GcpTranslator {
                 throw new Error(`Translation API error: ${response.status} ${response.statusText} - ${error}`);
             }
 
-            const data = await response.json();
-            
+            const data = await response.json() as any;
+
             if (!data.data?.translations?.[0]?.translatedText) {
                 throw new Error('Invalid response from Translation API');
             }
 
             return data.data.translations[0].translatedText;
-        } catch (error) {
+        } catch (error:any) {
             if (error instanceof Error) {
                 throw new Error(`Translation failed: ${error.message}`);
             }
@@ -59,7 +59,7 @@ export class GcpTranslator {
     }
 
     /**
-     * API 키가 설정되어 있는지 확인합니다.
+     * Checks whether the API key is configured.
      */
     isConfigured(): boolean {
         return !!this.apiKey;

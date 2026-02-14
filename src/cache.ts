@@ -1,8 +1,8 @@
 import type { Memento } from 'vscode';
 
 /**
- * 범용 키-값 캐시 저장소
- * VSCode Memento를 사용한 영구 저장소입니다.
+ * General-purpose key-value cache store.
+ * Uses VSCode Memento for persistent storage.
  */
 export class Cache {
     private state: Memento;
@@ -22,7 +22,7 @@ export class Cache {
     }
 
     /**
-     * 캐시에서 값을 가져옵니다.
+     * Retrieves a value from the cache.
      */
     get(key: string): string | undefined {
         const data = this.getData();
@@ -30,7 +30,7 @@ export class Cache {
     }
 
     /**
-     * 캐시에 값을 저장합니다.
+     * Stores a value in the cache.
      */
     async set(key: string, value: string): Promise<void> {
         const data = this.getData();
@@ -39,14 +39,23 @@ export class Cache {
     }
 
     /**
-     * 캐시를 비웁니다.
+     * Deletes a single entry from the cache.
+     */
+    async delete(key: string): Promise<void> {
+        const data = this.getData();
+        delete data[key];
+        await this.state.update(this.getKey(), data);
+    }
+
+    /**
+     * Clears the cache.
      */
     async clear(): Promise<void> {
         await this.state.update(this.getKey(), {});
     }
 
     /**
-     * 캐시 크기를 반환합니다.
+     * Returns the number of entries in the cache.
      */
     get size(): number {
         return Object.keys(this.getData()).length;

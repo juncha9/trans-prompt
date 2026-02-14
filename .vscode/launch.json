@@ -1,19 +1,13 @@
 {
 	"version": "0.2.0",
 	"configurations": [
+
 		{
-            "name": "start:dev",
-            "command": "npm run start:dev",
-            "request": "launch",
-            "type": "node-terminal",
-            "cwd": "${workspaceFolder}",
-            "outputCapture": "console",
-        },
-		{
-			"name": "Debug Extension",
+			"name": "debug",
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
+				"${workspaceFolder}/samples",
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"outFiles": [
@@ -21,5 +15,21 @@
 			],
 			"preLaunchTask": "${defaultBuildTask}"
 		},
+		{
+            "name": "compile",
+            "command": "npm run compile",
+            "request": "launch",
+            "type": "node-terminal",
+            "cwd": "${workspaceFolder}",
+            "outputCapture": "console",
+        },
+		{
+            "name": "watch",
+            "command": "npm run watch",
+            "request": "launch",
+            "type": "node-terminal",
+            "cwd": "${workspaceFolder}",
+            "outputCapture": "console",
+        },
 	]
 }

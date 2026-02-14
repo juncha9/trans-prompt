@@ -1,8 +1,8 @@
 {
     "name": "trans-prompt",
-    "displayName": "Translate Prompt File",
-    "description": "",
-    "version": "0.0.1",
+    "displayName": "Trans Prompt",
+    "description": "Inline translation overlay for prompt engineering in VS Code.",
+    "version": "1.0.0",
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
@@ -16,20 +16,37 @@
         "Other"
     ],
     "activationEvents": [
-        "onLanguage:markdown"
+        "onStartupFinished"
     ],
     "main": "./dist/extension.js",
     "contributes": {
         "commands": [
             {
+                "command": "trans-prompt.translate",
+                "title": "Trans Prompt: Translate Document",
+                "icon": "$(globe)"
+            },
+            {
                 "command": "trans-prompt.clearCache",
-                "title": "Translate Prompt File: Clear Translation Cache"
+                "title": "Trans Prompt: Clear Translation Cache"
+            },
+            {
+                "command": "trans-prompt.setApiKey",
+                "title": "Trans Prompt: Set Google API Key"
+            },
+            {
+                "command": "trans-prompt.setLanguage",
+                "title": "Trans Prompt: Set Target Language"
+            },
+            {
+                "command": "trans-prompt.reloadLine",
+                "title": "Trans Prompt: Reload Line Translation"
             }
         ],
         "configuration": {
-            "title": "Translate Prompt File",
+            "title": "Trans Prompt Configuration",
             "properties": {
-                "trans-prompt.targetLanguage": {
+                "trans-prompt.target_language": {
                     "type": "string",
                     "default": "ko",
                     "description": "Target language code for translation (e.g., ko, ja, en, zh-CN)",
@@ -56,13 +73,29 @@
                         "Russian (Русский)"
                     ]
                 },
-                "trans-prompt.googleApiKey": {
+                "trans-prompt.google_api_key": {
                     "type": "string",
                     "default": "",
                     "description": "Google Cloud Translation API key",
                     "markdownDescription": "Google Cloud Translation API key. Get your API key from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)."
                 }
             }
+        },
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "trans-prompt.translate",
+                    "when": "resourceExtname == .md",
+                    "group": "navigation"
+                }
+            ],
+            "editor/context": [
+                {
+                    "command": "trans-prompt.reloadLine",
+                    "when": "resourceExtname == .md",
+                    "group": "trans-prompt"
+                }
+            ]
         }
     },
     "devDependencies": {

@@ -3,8 +3,8 @@ import type { Memento } from 'vscode';
 import { Cache } from './cache';
 
 /**
- * 번역 전용 캐시
- * Cache 클래스의 특화된 래퍼입니다.
+ * Translation-specific cache.
+ * A specialized wrapper around the Cache class.
  */
 export class TranslationCache {
     private cache: Cache;
@@ -14,7 +14,7 @@ export class TranslationCache {
     }
 
     /**
-     * 텍스트와 언어로 해시 키를 생성합니다.
+     * Generates a hash key from text and target language.
      */
     private hash(text: string, targetLang: string): string {
         const hash = crypto.createHash('sha256').update(text).digest('hex');
@@ -22,28 +22,35 @@ export class TranslationCache {
     }
 
     /**
-     * 번역 캐시를 조회합니다.
+     * Retrieves a cached translation.
      */
     get(text: string, targetLang: string): string | undefined {
         return this.cache.get(this.hash(text, targetLang));
     }
 
     /**
-     * 번역 결과를 캐시에 저장합니다.
+     * Stores a translation result in the cache.
      */
     async set(text: string, targetLang: string, translation: string): Promise<void> {
         await this.cache.set(this.hash(text, targetLang), translation);
     }
 
     /**
-     * 번역 캐시를 비웁니다.
+     * Deletes a single translation from the cache.
+     */
+    async delete(text: string, targetLang: string): Promise<void> {
+        await this.cache.delete(this.hash(text, targetLang));
+    }
+
+    /**
+     * Clears the translation cache.
      */
     async clear(): Promise<void> {
         await this.cache.clear();
     }
 
     /**
-     * 캐시 크기를 반환합니다.
+     * Returns the number of entries in the cache.
      */
     get size(): number {
         return this.cache.size;

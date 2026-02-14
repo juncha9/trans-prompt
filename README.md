@@ -1,71 +1,53 @@
-# promptrans README
+# 🌐 Trans Prompt
 
-This is the README for your extension "promptrans". After writing up a brief description, we recommend including the following sections.
+**Inline translation overlay for prompt engineering in VS Code.**
 
-## Features
+Prompt engineering demands precision — every word in a system prompt, agent instruction, or skill definition shapes how an LLM behaves. Writing these in English yields the best results (fewer tokens, better model comprehension), but reviewing and refining English prompts can be a bottleneck for non-native speakers.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+Trans Prompt solves this by displaying inline translations directly beside each line of your `.md` prompt files. You can verify intent, catch ambiguities, and iterate faster — without leaving the editor or switching context.
 
-For example if there is an image subfolder under your extension project workspace:
+## ✨ Features
 
-\!\[feature X\]\(images/feature-x.png\)
+- 🔘 **On-demand translation** — Click the globe icon in the editor title bar to translate the current document
+- ⏳ **Loading indicators** — Shows `translating...` placeholders while API calls are in progress
+- 💾 **Persistent cache** — Translations are cached globally, so repeated content is instant
+- 🔄 **Per-line reload** — Right-click a line to clear its cached translation and re-translate
+- 🌍 **Multi-language support** — Korean, Japanese, Chinese, French, German, Spanish, Russian, and more
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## 📦 Requirements
 
-## Requirements
+- **Google Cloud Translation API key** — Get one from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+- Enable the **Cloud Translation API** in your Google Cloud project
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+## 🚀 Getting Started
 
-## Extension Settings
+1. Install the extension
+2. Open the Command Palette (`Ctrl+Shift+P`) and run `Trans Prompt: Set Google API Key`
+3. Open any `.md` file and click the 🌐 globe icon in the top-right corner
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## ⚙️ Settings
 
-For example:
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `trans-prompt.target_language` | Target language code (e.g., `ko`, `ja`, `zh-CN`) | `ko` |
+| `trans-prompt.google_api_key` | Google Cloud Translation API key | — |
 
-This extension contributes the following settings:
+## 📋 Commands
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+| Command | Description |
+|---------|-------------|
+| `Trans Prompt: Translate Document` | Translate the current document (also via globe icon) |
+| `Trans Prompt: Reload Line Translation` | Re-translate the current line (also via right-click) |
+| `Trans Prompt: Clear Translation Cache` | Clear all cached translations |
+| `Trans Prompt: Set Target Language` | Select target language from a list |
+| `Trans Prompt: Set Google API Key` | Set or update your API key |
 
-## Known Issues
+## 💡 Why Trans Prompt?
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- **Minimal API usage** — Translations are persistently cached via VS Code's global storage. Once a line is translated, it never calls the API again — even across sessions. Repeated phrases, boilerplate instructions, and unchanged lines cost zero additional API calls.
+- **On-demand only** — No background translation. The API is called only when you explicitly click the translate button, so you stay in full control of usage.
+- **Per-line cache management** — If a translation looks wrong, right-click to reload just that line instead of re-translating the entire document.
 
-## Release Notes
+## 📄 License
 
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+MIT
