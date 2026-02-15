@@ -1,9 +1,28 @@
+# IDE/Editor
 .vscode/**
+.claude/**
+
+# Source files
 src/**
+
+# Sample files
+samples/**
+
+# Config files
 .gitignore
 .yarnrc
 **/tsconfig.json
+
+# Build artifacts
 **/*.map
 **/*.ts
+
+# Test files
 **/.vscode-test.*
 .vscode-test/**
+
+# Dependencies
+node_modules/**
+
+# Package files
+*.vsix
