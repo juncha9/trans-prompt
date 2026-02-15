@@ -1,7 +1,5 @@
 .claude/
 
-*.gif
-
 *.vsix
 
 # Created by https://www.toptal.com/developers/gitignore/api/node

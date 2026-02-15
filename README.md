@@ -12,7 +12,7 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 2. Set your Google API key via Command Palette (`Ctrl+Shift+P`) → `Trans Prompt: Set Google API Key`
 3. Click the 🌐 globe icon in the top-right corner of the editor
 4. Inline translations appear beside each line — review, refine, and iterate instantly
-![Usage](usage.gif)
+![Usage](transprompt_usage.gif)
 
 ## 🤗 Features
 
