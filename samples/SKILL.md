@@ -8,8 +8,6 @@ allowed-tools: Bash, Read, Grep
 
 Defines Git workflow and commit conventions.
 
-Defines Git Test 
-
 ## Commit Message Format
 
 ### Structure

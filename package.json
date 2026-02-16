@@ -2,7 +2,7 @@
     "name": "trans-prompt",
     "displayName": "Trans Prompt",
     "description": "Inline translation overlay for prompt engineering in VS Code.",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "publisher": "alkemic-studio",
     "license": "MIT",
     "repository": {
@@ -49,6 +49,10 @@
             {
                 "command": "trans-prompt.reloadLine",
                 "title": "Trans Prompt: Reload Line Translation"
+            },
+            {
+                "command": "trans-prompt.setGap",
+                "title": "Trans Prompt: Set Display Gap"
             }
         ],
         "configuration": {
@@ -80,6 +84,13 @@
                         "Spanish (Español)",
                         "Russian (Русский)"
                     ]
+                },
+                "trans-prompt.display_gap": {
+                    "type": "number",
+                    "default": 8,
+                    "minimum": 0,
+                    "maximum": 40,
+                    "description": "Gap (in characters) between original text and translation overlay."
                 },
                 "trans-prompt.google_api_key": {
                     "type": "string",

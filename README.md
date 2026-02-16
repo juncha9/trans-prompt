@@ -21,6 +21,9 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 - 💾 **Persistent cache** — Translations are cached globally, so repeated content is instant
 - 🔄 **Per-line reload** — Right-click a line to clear its cached translation and re-translate
 - 🌍 **Multi-language support** — Korean, Japanese, Chinese, French, German, Spanish, Russian, and more
+- 🤖 **Copilot-friendly** — Hides translation overlay on the current editing line to avoid conflicts with GitHub Copilot inline suggestions
+- 📐 **Adjustable display gap** — Configure the spacing between original text and translation overlay
+- 💬 **Code block comment support** — Translates comments (`//`, `#`, `/* */`) inside fenced code blocks
 
 ## 🤓 Why Trans Prompt?
 
@@ -44,6 +47,7 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `trans-prompt.target_language` | Target language code (e.g., `ko`, `ja`, `zh-CN`) | `ko` |
+| `trans-prompt.display_gap` | Gap (in characters) between original text and translation overlay | `8` |
 | `trans-prompt.google_api_key` | Google Cloud Translation API key | — |
 
 ## 📋 Commands
@@ -54,6 +58,7 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 | `Trans Prompt: Reload Line Translation` | Re-translate the current line (also via right-click) |
 | `Trans Prompt: Clear Translation Cache` | Clear all cached translations |
 | `Trans Prompt: Set Target Language` | Select target language from a list |
+| `Trans Prompt: Set Display Gap` | Set gap between original text and translation |
 | `Trans Prompt: Set Google API Key` | Set or update your API key |
 
 

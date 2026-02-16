@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { TranslationCache } from './translation-cache';
 import { GcpTranslator } from './gcp-translator';
-import { getDisplayWidth } from './_utils';
+import { getDisplayWidth, parseParagraphs } from './_utils';
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -12,7 +12,8 @@ export function activate(context: vscode.ExtensionContext) {
 		const config = vscode.workspace.getConfiguration('trans-prompt');
 		return {
 			target_language: config.get<string>('target_language', 'ko'),
-			google_api_key: config.get<string>('google_api_key', '')
+			google_api_key: config.get<string>('google_api_key', ''),
+			display_gap: config.get<number>('display_gap', 8)
 		};
 	}
 
@@ -76,7 +77,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const picked = await vscode.window.showQuickPick(items, {
 				placeHolder: 'Select target language',
 			});
-			if (!picked || picked.code === current) { return; }
+			if (picked == null || picked.code === current) { return; }
 			await vscode.workspace.getConfiguration('trans-prompt').update('target_language', picked.code, vscode.ConfigurationTarget.Global);
 			vscode.window.showInformationMessage(`Trans Prompt: Target language set to ${picked.label}.`);
 		})
@@ -85,11 +86,35 @@ export function activate(context: vscode.ExtensionContext) {
 	// Clear translation cache for the current line
 	context.subscriptions.push(
 		vscode.commands.registerCommand('trans-prompt.reloadLine', async () => {
-			if (!activeEditor) { return; }
+			if (activeEditor == null) { return; }
 			const lineText = activeEditor.document.lineAt(activeEditor.selection.active.line).text.trim();
-			if (!lineText) { return; }
+			if (lineText == null) { return; }
 			const { target_language: targetLang } = getConfig();
 			await cache.delete(lineText, targetLang);
+			translateDocument();
+		})
+	);
+
+	// Set display gap
+	context.subscriptions.push(
+		vscode.commands.registerCommand('trans-prompt.setGap', async () => {
+			const current = getConfig().display_gap;
+			const input = await vscode.window.showInputBox({
+				prompt: 'Enter display gap (0-40)',
+				value: String(current),
+				validateInput: (value) => {
+					const num = Number(value);
+					if (isNaN(num) || num < 0 || num > 40 || Math.floor(num) !== num) {
+						return 'Please enter an integer between 0 and 40.';
+					}
+					return null;
+				}
+			});
+			if (input == null) { return; }
+			const gap = Number(input);
+			if (gap === current) { return; }
+			await vscode.workspace.getConfiguration('trans-prompt').update('display_gap', gap, vscode.ConfigurationTarget.Global);
+			vscode.window.showInformationMessage(`Trans Prompt: Display gap set to ${gap}.`);
 			translateDocument();
 		})
 	);
@@ -104,31 +129,20 @@ export function activate(context: vscode.ExtensionContext) {
 	// Define decoration style
     const translationDecorationType = vscode.window.createTextEditorDecorationType({
         after: {
-            margin: '0 0 0 1em',
-            contentText: '',
             color: new vscode.ThemeColor('descriptionForeground'),
             fontStyle: 'italic',
         },
     });
 
     let activeEditor = vscode.window.activeTextEditor;
+	let activeLine = activeEditor?.selection.active.line ?? -1;
+	let lastDecorations: vscode.DecorationOptions[] = [];
+	let dirty = false;
 
-	function parseParagraphs(lines: string[]): number[][] {
-        // Group lines into paragraphs (blocks of non-empty lines)
-		const paragraphs: number[][] = [];
-		let current: number[] = [];
-		for (let i = 0; i < lines.length; i++) {
-			if (lines[i].trim().length > 0) {
-				current.push(i);
-			} else if (current.length > 0) {
-				paragraphs.push(current);
-				current = [];
-			}
-		}
-		if (current.length > 0) {
-			paragraphs.push(current);
-		}
-		return paragraphs;
+	function applyDecorations() {
+		if (activeEditor == null) { return; }
+		const filtered = lastDecorations.filter(d => d.range.start.line !== activeLine);
+		activeEditor.setDecorations(translationDecorationType, filtered);
 	}
 
 	function buildDecoration(line: string, lineIndex: number, maxLen: number, gap: number, text: string, color?: string): vscode.DecorationOptions {
@@ -147,14 +161,17 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Translate document: show cached + call API for uncached lines
 	async function translateDocument() {
-		if (!activeEditor || !activeEditor.document.fileName.endsWith('.md')) {
+		if (activeEditor == null || activeEditor.document.fileName.endsWith('.md') == false) {
 			return;
 		}
 
 		const editor = activeEditor;
-		const { target_language: targetLang, google_api_key: apiKey } = getConfig();
+		const _config = getConfig();
+		const targetLanguage = _config.target_language;
+		const apiKey = _config.google_api_key;
+		const gap = _config.display_gap;
 
-		if (!apiKey) {
+		if (apiKey == null) {
 			vscode.window.showWarningMessage('Trans Prompt: Google API key is not configured.');
 			return;
 		}
@@ -162,16 +179,14 @@ export function activate(context: vscode.ExtensionContext) {
 		const translator = new GcpTranslator(apiKey);
 		const lines = editor.document.getText().split('\n');
 		const paragraphs = parseParagraphs(lines);
-		const gap = 4;
-
 		// Show loading placeholders for uncached lines
 		const previewDecorations: vscode.DecorationOptions[] = [];
 		for (const para of paragraphs) {
 			const maxLen = Math.max(...para.map(i => getDisplayWidth(lines[i])));
 			for (const i of para) {
 				const lineText = lines[i].trim();
-				if (!lineText) { continue; }
-				const cached = cache.get(lineText, targetLang);
+				if (lineText == null) { continue; }
+				const cached = cache.get(lineText, targetLanguage);
 				if (cached) {
 					previewDecorations.push(buildDecoration(lines[i], i, maxLen, gap, cached));
 				} else {
@@ -179,7 +194,8 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 		}
-		editor.setDecorations(translationDecorationType, previewDecorations);
+		lastDecorations = previewDecorations;
+		applyDecorations();
 
 		// Translate and build final decorations
 		const decorations: vscode.DecorationOptions[] = [];
@@ -187,13 +203,13 @@ export function activate(context: vscode.ExtensionContext) {
 			const maxLen = Math.max(...para.map(i => getDisplayWidth(lines[i])));
 			for (const i of para) {
 				const lineText = lines[i].trim();
-				if (!lineText) { continue; }
+				if (lineText == null || lineText == "") { continue; }
 
-				let translatedText = cache.get(lineText, targetLang);
-				if (!translatedText) {
+				let translatedText = cache.get(lineText, targetLanguage);
+				if (translatedText == null) {
 					try {
-						translatedText = await translator.translate(lineText, targetLang);
-						await cache.set(lineText, targetLang, translatedText);
+						translatedText = await translator.translate(lineText, targetLanguage);
+						await cache.set(lineText, targetLanguage, translatedText);
 					} catch (error) {
 						console.error('Translation error:', error);
 						translatedText = `(translation error)`;
@@ -204,13 +220,35 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		if (editor === activeEditor) {
-			editor.setDecorations(translationDecorationType, decorations);
+			lastDecorations = decorations;
+			applyDecorations();
 		}
 	}
 
     vscode.window.onDidChangeActiveTextEditor(editor => {
         activeEditor = editor;
+		activeLine = editor?.selection.active.line ?? -1;
     }, null, context.subscriptions);
+
+	vscode.window.onDidChangeTextEditorSelection(event => {
+		if (event.textEditor !== activeEditor) { return; }
+		const newLine = event.selections[0].active.line;
+		if (newLine !== activeLine) {
+			activeLine = newLine;
+			if (dirty) {
+				dirty = false;
+				translateDocument();
+			} else {
+				applyDecorations();
+			}
+		}
+	}, null, context.subscriptions);
+
+	vscode.workspace.onDidChangeTextDocument(event => {
+		if (activeEditor == null || event.document !== activeEditor.document) { return; }
+		if (event.document.fileName.endsWith('.md') == false) { return; }
+		dirty = true;
+	}, null, context.subscriptions);
 }
 
 // This method is called when your extension is deactivated
