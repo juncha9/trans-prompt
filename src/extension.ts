@@ -22,6 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('trans-prompt.clearCache', async () => {
 			await cache.clear();
 			vscode.window.showInformationMessage(`Trans Prompt: Translation cache cleared. (${cache.size} entries)`);
+			currentDecorations = [];
 			activeEditor?.setDecorations(translationDecorationType, []);
 		})
 	);
@@ -136,12 +137,12 @@ export function activate(context: vscode.ExtensionContext) {
 
     let activeEditor = vscode.window.activeTextEditor;
 	let activeLine = activeEditor?.selection.active.line ?? -1;
-	let lastDecorations: vscode.DecorationOptions[] = [];
+	let currentDecorations: vscode.DecorationOptions[] = [];
 	let dirty = false;
 
 	function applyDecorations() {
 		if (activeEditor == null) { return; }
-		const filtered = lastDecorations.filter(d => d.range.start.line !== activeLine);
+		const filtered = currentDecorations.filter(d => d.range.start.line !== activeLine);
 		activeEditor.setDecorations(translationDecorationType, filtered);
 	}
 
@@ -194,7 +195,7 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 		}
-		lastDecorations = previewDecorations;
+		currentDecorations = previewDecorations;
 		applyDecorations();
 
 		// Translate and build final decorations
@@ -206,12 +207,15 @@ export function activate(context: vscode.ExtensionContext) {
 				if (lineText == null || lineText == "") { continue; }
 
 				let translatedText = cache.get(lineText, targetLanguage);
-				if (translatedText == null) {
+				if (translatedText != null) {
+					console.log(`[trans-prompt] cache hit: "${lineText.substring(0, 30)}..."`);
+				} else {
 					try {
+						console.log(`[trans-prompt] translating: "${lineText.substring(0, 30)}..."`);
 						translatedText = await translator.translate(lineText, targetLanguage);
 						await cache.set(lineText, targetLanguage, translatedText);
 					} catch (error) {
-						console.error('Translation error:', error);
+						console.error('[trans-prompt] translation error:', error);
 						translatedText = `(translation error)`;
 					}
 				}
@@ -220,7 +224,8 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		if (editor === activeEditor) {
-			lastDecorations = decorations;
+			// Update decorations only if the active editor hasn't changed during async calls
+			currentDecorations = decorations;
 			applyDecorations();
 		}
 	}
@@ -228,6 +233,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(editor => {
         activeEditor = editor;
 		activeLine = editor?.selection.active.line ?? -1;
+		currentDecorations = [];
+		if (editor != null) {
+			editor.setDecorations(translationDecorationType, []);
+		}
     }, null, context.subscriptions);
 
 	vscode.window.onDidChangeTextEditorSelection(event => {

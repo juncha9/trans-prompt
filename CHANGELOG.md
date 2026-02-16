@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.1] - 2026-02-17
+
+### Fixed
+- 🔀 Fixed bug where translation decorations from previous document remained on other files (`.ts`, `.json`, etc.) when switching tabs
+
+### Changed
+- Changed to initialize decoration state when switching tabs — translations must be explicitly executed to be displayed
+- Added cache hit/miss debug logs (`[trans-prompt]` prefix)
+- Improved variable naming: `lastDecorations` → `currentDecorations`
+
 ## [1.1.0] - 2026-02-16
 
 ### Added
