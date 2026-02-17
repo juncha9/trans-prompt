@@ -21,6 +21,9 @@
         "vscode": "^1.109.0"
     },
     "categories": [
+        "Programming Languages",
+        "Visualization",
+        "AI",
         "Other"
     ],
     "activationEvents": [
