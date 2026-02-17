@@ -10,13 +10,14 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 
 1. Open any `.md` file in VS Code
 2. Set your Google API key via Command Palette (`Ctrl+Shift+P`) → `Trans Prompt: Set Google API Key`
-3. Click the 🌐 globe icon in the top-right corner of the editor
+3. Click the 🌐 globe icon in the top-right corner to enable translation
 4. Inline translations appear beside each line — review, refine, and iterate instantly
+5. Click the ⊘ icon to disable translation and clear overlays
 ![Usage](transprompt_usage.gif)
 
 ## 🤗 Features
 
-- 🔘 **On-demand translation** — Click the globe icon in the editor title bar to translate the current document
+- 🔘 **Enable/Disable toggle** — Click the globe icon to enable, click again (⊘) to disable and clear overlays
 - ⏳ **Loading indicators** — Shows `translating...` placeholders while API calls are in progress
 - 💾 **Persistent cache** — Translations are cached globally, so repeated content is instant
 - 🔄 **Per-line reload** — Right-click a line to clear its cached translation and re-translate
@@ -28,7 +29,7 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 ## 🤓 Why Trans Prompt?
 
 - **Minimal API usage** — Translations are persistently cached via VS Code's global storage. Once a line is translated, it never calls the API again — even across sessions. Repeated phrases, boilerplate instructions, and unchanged lines cost zero additional API calls.
-- **On-demand only** — No background translation. The API is called only when you explicitly click the translate button, so you stay in full control of usage.
+- **On-demand only** — No background translation. The API is called only when you explicitly enable translation, so you stay in full control of usage.
 - **Per-line cache management** — If a translation looks wrong, right-click to reload just that line instead of re-translating the entire document.
 
 ## 📦 Requirements
@@ -40,7 +41,7 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 
 1. Install the extension
 2. Open the Command Palette (`Ctrl+Shift+P`) and run `Trans Prompt: Set Google API Key`
-3. Open any `.md` file and click the 🌐 globe icon in the top-right corner
+3. Open any `.md` file and click the 🌐 globe icon in the top-right corner to enable translation
 
 ## ⚙️ Settings
 
@@ -54,8 +55,10 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 
 | Command | Description |
 |---------|-------------|
-| `Trans Prompt: Translate Document` | Translate the current document (also via globe icon) |
-| `Trans Prompt: Reload Line Translation` | Re-translate the current line (also via right-click) |
+| `Trans Prompt: Enable Translation` | Enable translation and translate the current document (🌐 icon) |
+| `Trans Prompt: Disable Translation` | Disable translation and clear all overlays (⊘ icon) |
+| `Trans Prompt: Translate Document` | Re-translate the current document (when enabled) |
+| `Trans Prompt: Reload This Line Translation` | Re-translate the current line (also via right-click) |
 | `Trans Prompt: Clear Translation Cache` | Clear all cached translations |
 | `Trans Prompt: Set Target Language` | Select target language from a list |
 | `Trans Prompt: Set Display Gap` | Set gap between original text and translation |

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0] - 2026-02-18
+
+### Added
+- **Enable/Disable toggle** — Separate `Enable Translation` (🌐) and `Disable Translation` (⊘) commands with toggling title bar icon
+- **Translation state guard** — Auto-translation only triggers when explicitly enabled; no more accidental translations on Enter key
+
+### Changed
+- `Translate Document` command now only works when translation is enabled
+- `Reload This Line Translation` (renamed from `Reload Line Translation`) now re-translates only the current line instead of the entire document
+- Inlined `applyDecorations` — each call site now directly manages decoration filtering for clearer context
+- Translation state resets when switching editor tabs
+
 ## [1.1.1] - 2026-02-17
 
 ### Fixed
