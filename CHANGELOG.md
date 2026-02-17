@@ -12,6 +12,9 @@
 - Inlined `applyDecorations` — each call site now directly manages decoration filtering for clearer context
 - Translation state resets when switching editor tabs
 
+### Fixed
+- Fixed bug where translation was triggered every time the Enter key was pressed
+
 ## [1.1.1] - 2026-02-17
 
 ### Fixed
