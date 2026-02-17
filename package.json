@@ -2,7 +2,7 @@
     "name": "trans-prompt",
     "displayName": "Trans Prompt",
     "description": "Inline translation overlay for prompt engineering in VS Code.",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "publisher": "alkemic-studio",
     "license": "MIT",
     "repository": {
@@ -30,9 +30,18 @@
     "contributes": {
         "commands": [
             {
-                "command": "trans-prompt.translate",
-                "title": "Trans Prompt: Translate Document",
+                "command": "trans-prompt.enable",
+                "title": "Trans Prompt: Enable Translation",
                 "icon": "$(globe)"
+            },
+            {
+                "command": "trans-prompt.disable",
+                "title": "Trans Prompt: Disable Translation",
+                "icon": "$(circle-slash)"
+            },
+            {
+                "command": "trans-prompt.translate",
+                "title": "Trans Prompt: Translate Document"
             },
             {
                 "command": "trans-prompt.clearCache",
@@ -48,7 +57,7 @@
             },
             {
                 "command": "trans-prompt.reloadLine",
-                "title": "Trans Prompt: Reload Line Translation"
+                "title": "Trans Prompt: Reload This Line Translation"
             },
             {
                 "command": "trans-prompt.setGap",
@@ -103,8 +112,13 @@
         "menus": {
             "editor/title": [
                 {
-                    "command": "trans-prompt.translate",
-                    "when": "resourceExtname == .md",
+                    "command": "trans-prompt.enable",
+                    "when": "resourceExtname == .md && !trans-prompt.enabled",
+                    "group": "navigation"
+                },
+                {
+                    "command": "trans-prompt.disable",
+                    "when": "resourceExtname == .md && trans-prompt.enabled",
                     "group": "navigation"
                 }
             ],

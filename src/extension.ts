@@ -84,15 +84,43 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
-	// Clear translation cache for the current line
+	// Reload translation for the current line
 	context.subscriptions.push(
 		vscode.commands.registerCommand('trans-prompt.reloadLine', async () => {
-			if (activeEditor == null) { return; }
-			const lineText = activeEditor.document.lineAt(activeEditor.selection.active.line).text.trim();
-			if (lineText == null) { return; }
-			const { target_language: targetLang } = getConfig();
+			if (activeEditor == null || enabled == false) { return; }
+			const lineIndex = activeEditor.selection.active.line;
+			const line = activeEditor.document.lineAt(lineIndex).text;
+			const lineText = line.trim();
+			if (lineText == null || lineText == "") { return; }
+
+			const { target_language: targetLang, google_api_key: apiKey, display_gap: gap } = getConfig();
+			if (apiKey == null) { return; }
+
 			await cache.delete(lineText, targetLang);
-			translateDocument();
+
+			const translator = new GcpTranslator(apiKey);
+			let translatedText: string;
+			try {
+				translatedText = await translator.translate(lineText, targetLang);
+				await cache.set(lineText, targetLang, translatedText);
+			} catch (error) {
+				console.error('[trans-prompt] translation error:', error);
+				translatedText = '(translation error)';
+			}
+
+			// Find the paragraph containing this line to calculate maxLen
+			const lines = activeEditor.document.getText().split('\n');
+			const paragraphs = parseParagraphs(lines);
+			const para = paragraphs.find(p => p.includes(lineIndex));
+			const maxLen = para != null
+				? Math.max(...para.map(i => getDisplayWidth(lines[i])))
+				: getDisplayWidth(line);
+
+			// Replace the decoration for this line
+			currentDecorations = currentDecorations.filter(d => d.range.start.line !== lineIndex);
+			currentDecorations.push(buildDecoration(line, lineIndex, maxLen, gap, translatedText));
+			const filtered = currentDecorations.filter(d => d.range.start.line !== activeLine);
+			activeEditor.setDecorations(translationDecorationType, filtered);
 		})
 	);
 
@@ -120,9 +148,29 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
-	// Translate current document
+	// Enable translation
+	context.subscriptions.push(
+		vscode.commands.registerCommand('trans-prompt.enable', () => {
+			enabled = true;
+			vscode.commands.executeCommand('setContext', 'trans-prompt.enabled', true);
+			translateDocument();
+		})
+	);
+
+	// Disable translation
+	context.subscriptions.push(
+		vscode.commands.registerCommand('trans-prompt.disable', () => {
+			enabled = false;
+			vscode.commands.executeCommand('setContext', 'trans-prompt.enabled', false);
+			currentDecorations = [];
+			activeEditor?.setDecorations(translationDecorationType, []);
+		})
+	);
+
+	// Translate current document (only when enabled)
 	context.subscriptions.push(
 		vscode.commands.registerCommand('trans-prompt.translate', () => {
+			if (enabled == false) { return; }
 			translateDocument();
 		})
 	);
@@ -139,12 +187,8 @@ export function activate(context: vscode.ExtensionContext) {
 	let activeLine = activeEditor?.selection.active.line ?? -1;
 	let currentDecorations: vscode.DecorationOptions[] = [];
 	let dirty = false;
+	let enabled = false;
 
-	function applyDecorations() {
-		if (activeEditor == null) { return; }
-		const filtered = currentDecorations.filter(d => d.range.start.line !== activeLine);
-		activeEditor.setDecorations(translationDecorationType, filtered);
-	}
 
 	function buildDecoration(line: string, lineIndex: number, maxLen: number, gap: number, text: string, color?: string): vscode.DecorationOptions {
 		const padding = maxLen - getDisplayWidth(line) + gap;
@@ -196,7 +240,8 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 		currentDecorations = previewDecorations;
-		applyDecorations();
+		const previewFiltered = currentDecorations.filter(d => d.range.start.line !== activeLine);
+		editor.setDecorations(translationDecorationType, previewFiltered);
 
 		// Translate and build final decorations
 		const decorations: vscode.DecorationOptions[] = [];
@@ -226,7 +271,8 @@ export function activate(context: vscode.ExtensionContext) {
 		if (editor === activeEditor) {
 			// Update decorations only if the active editor hasn't changed during async calls
 			currentDecorations = decorations;
-			applyDecorations();
+			const finalFiltered = currentDecorations.filter(d => d.range.start.line !== activeLine);
+			editor.setDecorations(translationDecorationType, finalFiltered);
 		}
 	}
 
@@ -234,6 +280,8 @@ export function activate(context: vscode.ExtensionContext) {
         activeEditor = editor;
 		activeLine = editor?.selection.active.line ?? -1;
 		currentDecorations = [];
+		enabled = false;
+		vscode.commands.executeCommand('setContext', 'trans-prompt.enabled', false);
 		if (editor != null) {
 			editor.setDecorations(translationDecorationType, []);
 		}
@@ -244,11 +292,12 @@ export function activate(context: vscode.ExtensionContext) {
 		const newLine = event.selections[0].active.line;
 		if (newLine !== activeLine) {
 			activeLine = newLine;
-			if (dirty) {
+			if (dirty == true && enabled == true) {
 				dirty = false;
 				translateDocument();
-			} else {
-				applyDecorations();
+			} else if (activeEditor != null) {
+				const filtered = currentDecorations.filter(d => d.range.start.line !== activeLine);
+				activeEditor.setDecorations(translationDecorationType, filtered);
 			}
 		}
 	}, null, context.subscriptions);
