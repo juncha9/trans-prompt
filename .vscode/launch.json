@@ -16,16 +16,24 @@
 			"preLaunchTask": "${defaultBuildTask}"
 		},
 		{
-            "name": "compile",
-            "command": "npm run compile",
+            "name": "build",
+            "command": "npm run build",
             "request": "launch",
             "type": "node-terminal",
             "cwd": "${workspaceFolder}",
             "outputCapture": "console",
         },
 		{
-            "name": "watch",
-            "command": "npm run watch",
+            "name": "package",
+            "command": "npm run package",
+            "request": "launch",
+            "type": "node-terminal",
+            "cwd": "${workspaceFolder}",
+            "outputCapture": "console",
+        },
+		{
+            "name": "publish",
+            "command": "npm run publish",
             "request": "launch",
             "type": "node-terminal",
             "cwd": "${workspaceFolder}",

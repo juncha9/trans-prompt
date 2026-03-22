@@ -182,12 +182,14 @@ export function activate(context: vscode.ExtensionContext) {
             fontStyle: 'italic',
         },
     });
+    context.subscriptions.push(translationDecorationType);
 
     let activeEditor = vscode.window.activeTextEditor;
 	let activeLine = activeEditor?.selection.active.line ?? -1;
 	let currentDecorations: vscode.DecorationOptions[] = [];
 	let dirty = false;
 	let enabled = false;
+	let translating = false;
 
 
 	function buildDecoration(line: string, lineIndex: number, maxLen: number, gap: number, text: string, color?: string): vscode.DecorationOptions {
@@ -209,70 +211,77 @@ export function activate(context: vscode.ExtensionContext) {
 		if (activeEditor == null || activeEditor.document.fileName.endsWith('.md') == false) {
 			return;
 		}
-
-		const editor = activeEditor;
-		const _config = getConfig();
-		const targetLanguage = _config.target_language;
-		const apiKey = _config.google_api_key;
-		const gap = _config.display_gap;
-
-		if (apiKey == null) {
-			vscode.window.showWarningMessage('Trans Prompt: Google API key is not configured.');
-			return;
+		if (translating == true) { 
+			return; 
 		}
+		translating = true;
+		try {
+			const editor = activeEditor;
+			const _config = getConfig();
+			const targetLanguage = _config.target_language;
+			const apiKey = _config.google_api_key;
+			const gap = _config.display_gap;
 
-		const translator = new GcpTranslator(apiKey);
-		const lines = editor.document.getText().split('\n');
-		const paragraphs = parseParagraphs(lines);
-		// Show loading placeholders for uncached lines
-		const previewDecorations: vscode.DecorationOptions[] = [];
-		for (const para of paragraphs) {
-			const maxLen = Math.max(...para.map(i => getDisplayWidth(lines[i])));
-			for (const i of para) {
-				const lineText = lines[i].trim();
-				if (lineText == null) { continue; }
-				const cached = cache.get(lineText, targetLanguage);
-				if (cached) {
-					previewDecorations.push(buildDecoration(lines[i], i, maxLen, gap, cached));
-				} else {
-					previewDecorations.push(buildDecoration(lines[i], i, maxLen, gap, 'translating...', 'rgba(128,128,128,0.5)'));
-				}
+			if (apiKey == null) {
+				vscode.window.showWarningMessage('Trans Prompt: Google API key is not configured.');
+				return;
 			}
-		}
-		currentDecorations = previewDecorations;
-		const previewFiltered = currentDecorations.filter(d => d.range.start.line !== activeLine);
-		editor.setDecorations(translationDecorationType, previewFiltered);
 
-		// Translate and build final decorations
-		const decorations: vscode.DecorationOptions[] = [];
-		for (const para of paragraphs) {
-			const maxLen = Math.max(...para.map(i => getDisplayWidth(lines[i])));
-			for (const i of para) {
-				const lineText = lines[i].trim();
-				if (lineText == null || lineText == "") { continue; }
-
-				let translatedText = cache.get(lineText, targetLanguage);
-				if (translatedText != null) {
-					console.log(`[trans-prompt] cache hit: "${lineText.substring(0, 30)}..."`);
-				} else {
-					try {
-						console.log(`[trans-prompt] translating: "${lineText.substring(0, 30)}..."`);
-						translatedText = await translator.translate(lineText, targetLanguage);
-						await cache.set(lineText, targetLanguage, translatedText);
-					} catch (error) {
-						console.error('[trans-prompt] translation error:', error);
-						translatedText = `(translation error)`;
+			const translator = new GcpTranslator(apiKey);
+			const lines = editor.document.getText().split('\n');
+			const paragraphs = parseParagraphs(lines);
+			// Show loading placeholders for uncached lines
+			const previewDecorations: vscode.DecorationOptions[] = [];
+			for (const para of paragraphs) {
+				const maxLen = Math.max(...para.map(i => getDisplayWidth(lines[i])));
+				for (const i of para) {
+					const lineText = lines[i].trim();
+					if (lineText == null) { continue; }
+					const cached = cache.get(lineText, targetLanguage);
+					if (cached) {
+						previewDecorations.push(buildDecoration(lines[i], i, maxLen, gap, cached));
+					} else {
+						previewDecorations.push(buildDecoration(lines[i], i, maxLen, gap, 'translating...', 'rgba(128,128,128,0.5)'));
 					}
 				}
-				decorations.push(buildDecoration(lines[i], i, maxLen, gap, translatedText));
 			}
-		}
+			currentDecorations = previewDecorations;
+			const previewFiltered = currentDecorations.filter(d => d.range.start.line !== activeLine);
+			editor.setDecorations(translationDecorationType, previewFiltered);
 
-		if (editor === activeEditor) {
-			// Update decorations only if the active editor hasn't changed during async calls
-			currentDecorations = decorations;
-			const finalFiltered = currentDecorations.filter(d => d.range.start.line !== activeLine);
-			editor.setDecorations(translationDecorationType, finalFiltered);
+			// Translate and build final decorations
+			const decorations: vscode.DecorationOptions[] = [];
+			for (const para of paragraphs) {
+				const maxLen = Math.max(...para.map(i => getDisplayWidth(lines[i])));
+				for (const i of para) {
+					const lineText = lines[i].trim();
+					if (lineText == null || lineText == "") { continue; }
+
+					let translatedText = cache.get(lineText, targetLanguage);
+					if (translatedText != null) {
+						console.log(`[trans-prompt] cache hit: "${lineText.substring(0, 30)}..."`);
+					} else {
+						try {
+							console.log(`[trans-prompt] translating: "${lineText.substring(0, 30)}..."`);
+							translatedText = await translator.translate(lineText, targetLanguage);
+							await cache.set(lineText, targetLanguage, translatedText);
+						} catch (error) {
+							console.error('[trans-prompt] translation error:', error);
+							translatedText = `(translation error)`;
+						}
+					}
+					decorations.push(buildDecoration(lines[i], i, maxLen, gap, translatedText));
+				}
+			}
+
+			if (editor === activeEditor && enabled == true) {
+				// Update decorations only if the active editor hasn't changed and translation is still enabled
+				currentDecorations = decorations;
+				const finalFiltered = currentDecorations.filter(d => d.range.start.line !== activeLine);
+				editor.setDecorations(translationDecorationType, finalFiltered);
+			}
+		} finally {
+			translating = false;
 		}
 	}
 

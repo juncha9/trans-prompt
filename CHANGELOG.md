@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1] - 2026-03-22
+
+### Fixed
+- Fixed memory leak: `translationDecorationType` is now properly disposed via `context.subscriptions`
+- Fixed bug where decorations reappeared after disabling translation if an async translation was already in progress
+- Fixed concurrent `translateDocument()` calls causing duplicate API requests and decoration conflicts
+
 ## [1.2.0] - 2026-02-18
 
 ### Added
