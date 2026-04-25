@@ -2,7 +2,7 @@
     "name": "trans-prompt",
     "displayName": "Trans Prompt",
     "description": "Inline translation overlay for prompt engineering in VS Code.",
-    "version": "1.2.1",
+    "version": "1.3.0",
     "publisher": "alkemic-studio",
     "license": "MIT",
     "repository": {
@@ -27,7 +27,7 @@
         "Other"
     ],
     "activationEvents": [
-        "onStartupFinished"
+        "onLanguage:markdown"
     ],
     "main": "./dist/extension.js",
     "contributes": {

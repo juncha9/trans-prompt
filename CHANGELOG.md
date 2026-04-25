@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0] - 2026-04-26
+
+### Added
+- **Live re-translation on document edit** — translations now refresh automatically while typing (600ms debounce) instead of waiting for the cursor to move to another line
+- **Per-document enabled state** — translation overlay state is preserved per file, so switching tabs no longer requires re-enabling
+
+### Performance
+- **Batch translation** — uncached lines in a document are deduplicated and translated in 100-line chunks per API call (previously sequential per-line)
+- **In-memory cache with debounced flush** — cache writes are coalesced to a single persistent write, eliminating O(N²) serialization on rapid misses
+- Narrowed activation event from `onStartupFinished` to `onLanguage:markdown` to reduce VS Code startup cost
+
+### Fixed
+- API key empty-string was not detected (the default `''` slipped past the `== null` check) — now properly validated with a warning
+- HTML entities (`&#39;`, `&amp;`, `&quot;`, etc.) returned by Google Translate are now decoded before display and caching
+
 ## [1.2.1] - 2026-03-22
 
 ### Fixed

@@ -50,6 +50,13 @@ export class TranslationCache {
     }
 
     /**
+     * Persists pending in-memory changes to storage.
+     */
+    async flush(): Promise<void> {
+        await this.cache.flush();
+    }
+
+    /**
      * Returns the number of entries in the cache.
      */
     get size(): number {
