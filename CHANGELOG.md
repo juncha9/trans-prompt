@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0] - 2026-04-26
+
+### Added
+- **Side webview panel display mode** (new default) — `display_mode: 'panel'` renders translations in a side webview synced with the editor cursor, replacing the right-side overlay as the default
+- **Active-line highlight & jump** — In panel mode, the row matching the editor cursor is highlighted and auto-centered; clicking any panel row jumps the editor cursor to that line
+- **`Trans Prompt: Set Display Mode` command** — Switch between `panel` and `right` display modes
+- **`trans-prompt.display_mode` setting** — `panel` (default) or `right`
+- **In-panel "Enable" prompt** — Switching to a non-enabled markdown document while panel is open shows a centered notice with an action button to enable translation for that document
+
+### Fixed
+- Active-line highlight no longer leaks to other documents — only syncs when the active editor's document URI matches the panel's document URI
+- Webview/terminal focus changes (which fire `onDidChangeActiveTextEditor` with `undefined`) no longer reset internal state, so panel row clicks and the in-panel Enable button work reliably
+
 ## [1.3.0] - 2026-04-26
 
 ### Added
