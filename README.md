@@ -18,12 +18,14 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 ## 🤗 Features
 
 - 🔘 **Enable/Disable toggle** — Click the globe icon to enable, click again (⊘) to disable and clear overlays
+- 🪟 **Two display modes** — `panel` (default): translations in a side webview synced with the editor cursor; `right`: inline translations to the right of each line
+- 🎯 **Active-line highlight & jump** — In panel mode, the row matching the editor cursor is highlighted and centered; click any panel row to jump the editor cursor there
 - ⏳ **Loading indicators** — Shows `translating...` placeholders while API calls are in progress
 - 💾 **Persistent cache** — Translations are cached globally, so repeated content is instant
 - 🔄 **Per-line reload** — Right-click a line to clear its cached translation and re-translate
 - 🌍 **Multi-language support** — Korean, Japanese, Chinese, French, German, Spanish, Russian, and more
-- 🤖 **Copilot-friendly** — Hides translation overlay on the current editing line to avoid conflicts with GitHub Copilot inline suggestions
-- 📐 **Adjustable display gap** — Configure the spacing between original text and translation overlay
+- 🤖 **Copilot-friendly** — In `right` mode, hides translation overlay on the current editing line to avoid conflicts with GitHub Copilot inline suggestions
+- 📐 **Adjustable display gap** — Configure the spacing between original text and translation overlay (`right` mode)
 - 💬 **Code block comment support** — Translates comments (`//`, `#`, `/* */`) inside fenced code blocks
 
 ## 🤓 Why Trans Prompt?
@@ -48,7 +50,8 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `trans-prompt.target_language` | Target language code (e.g., `ko`, `ja`, `zh-CN`) | `ko` |
-| `trans-prompt.display_gap` | Gap (in characters) between original text and translation overlay | `8` |
+| `trans-prompt.display_mode` | How translations are rendered: `panel` (side webview) or `right` (inline to the right) | `panel` |
+| `trans-prompt.display_gap` | Gap (in characters) between original text and translation overlay (used in `right` mode) | `8` |
 | `trans-prompt.google_api_key` | Google Cloud Translation API key | — |
 
 ## 📋 Commands
@@ -61,7 +64,8 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 | `Trans Prompt: Reload This Line Translation` | Re-translate the current line (also via right-click) |
 | `Trans Prompt: Clear Translation Cache` | Clear all cached translations |
 | `Trans Prompt: Set Target Language` | Select target language from a list |
-| `Trans Prompt: Set Display Gap` | Set gap between original text and translation |
+| `Trans Prompt: Set Display Mode` | Switch between `panel` and `right` display modes |
+| `Trans Prompt: Set Display Gap` | Set gap between original text and translation (`right` mode) |
 | `Trans Prompt: Set Google API Key` | Set or update your API key |
 
 

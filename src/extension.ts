@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import { TranslationCache } from './translation-cache';
 import { GcpTranslator } from './gcp-translator';
 import { getDisplayWidth, parseParagraphs } from './_utils';
+import { TranslationPanel, PanelEntry } from './translation-panel';
+
+type DisplayMode = 'right' | 'panel';
 
 let activeCache: TranslationCache | undefined;
 
@@ -38,7 +41,8 @@ export function activate(context: vscode.ExtensionContext) {
 		return {
 			target_language: config.get<string>('target_language', 'ko'),
 			google_api_key: config.get<string>('google_api_key', ''),
-			display_gap: config.get<number>('display_gap', 8)
+			display_gap: config.get<number>('display_gap', 8),
+			display_mode: config.get<DisplayMode>('display_mode', 'panel'),
 		};
 	}
 
@@ -121,13 +125,19 @@ export function activate(context: vscode.ExtensionContext) {
 			const lineText = line.trim();
 			if (lineText == null || lineText == "") { return; }
 
-			const { target_language: targetLang, google_api_key: apiKey, display_gap: gap } = getConfig();
+			const { target_language: targetLang, google_api_key: apiKey, display_gap: gap, display_mode: mode } = getConfig();
 			if (!apiKey || apiKey.trim() === '') {
 				vscode.window.showWarningMessage('Trans Prompt: Google API key is not configured.');
 				return;
 			}
 
 			await cache.delete(lineText, targetLang);
+
+			// 'panel' 모드에서는 단일 라인 부분 갱신 대신 전체 문서를 재번역해 패널을 업데이트
+			if (mode === 'panel') {
+				translateDocument();
+				return;
+			}
 
 			const translator = new GcpTranslator(apiKey);
 			let translatedText: string;
@@ -179,6 +189,33 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
+	// (3.5b) setMode: QuickPick으로 표시 모드 선택 (right / panel)
+	const DISPLAY_MODES: { mode: DisplayMode; label: string; detail: string }[] = [
+		{ mode: 'right', label: 'Right', detail: 'Show translation to the right of each line (aligned per paragraph).' },
+		{ mode: 'panel', label: 'Panel', detail: 'Show translations in a side webview panel synced with editor scroll.' },
+	];
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('trans-prompt.setMode', async () => {
+			const current = getConfig().display_mode;
+			const items = DISPLAY_MODES.map(m => ({
+				label: m.label,
+				description: m.mode === current ? '(current)' : '',
+				detail: m.detail,
+				mode: m.mode,
+			}));
+			const picked = await vscode.window.showQuickPick(items, {
+				placeHolder: 'Select display mode',
+			});
+			if (picked == null || picked.mode === current) { return; }
+			await vscode.workspace.getConfiguration('trans-prompt').update('display_mode', picked.mode, vscode.ConfigurationTarget.Global);
+			vscode.window.showInformationMessage(`Trans Prompt: Display mode set to ${picked.label}.`);
+			// panel → right 전환 시 패널 dispose
+			if (picked.mode === 'right') { disposePanel(); }
+			translateDocument();
+		})
+	);
+
 	// (3.6) enable: 현재 문서를 enabledDocs에 추가, 컨텍스트 키 켜고 즉시 번역
 	context.subscriptions.push(
 		vscode.commands.registerCommand('trans-prompt.enable', () => {
@@ -190,7 +227,7 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
-	// (3.7) disable: enabledDocs에서 제거, 디바운스 취소, 데코레이션 제거
+	// (3.7) disable: enabledDocs에서 제거, 디바운스 취소, 데코레이션/패널 제거
 	context.subscriptions.push(
 		vscode.commands.registerCommand('trans-prompt.disable', () => {
 			const key = getDocKey(activeEditor);
@@ -200,6 +237,7 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.commands.executeCommand('setContext', 'trans-prompt.enabled', false);
 			currentDecorations = [];
 			activeEditor?.setDecorations(translationDecorationType, []);
+			disposePanel();
 		})
 	);
 
@@ -268,7 +306,71 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push({ dispose: cancelScheduledTranslate });
 
 
-	// (6.3) buildDecoration: 한 라인의 데코레이션 옵션 생성
+	// (6.2.1) 패널 상태 — 현재 모드에 따라 lazy 생성/dispose
+	//         panelDocUri: 패널이 마지막으로 렌더링한 문서. 패널 클릭 시 webview가 포커스를 뺏어
+	//         activeEditor가 undefined가 되므로, 이 값으로 대상 문서를 식별한다.
+	let panel: TranslationPanel | undefined;
+	let panelDocUri: vscode.Uri | undefined;
+
+	async function jumpToLineInDoc(uri: vscode.Uri, line: number) {
+		// visible editors 우선, 없으면 문서를 열어서 표시
+		let target = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString());
+		if (target == null) {
+			const doc = await vscode.workspace.openTextDocument(uri);
+			target = await vscode.window.showTextDocument(doc, vscode.ViewColumn.One, false);
+		} else {
+			// 보이긴 하지만 비활성일 수 있으니 활성화시킴 (포커스 부여)
+			target = await vscode.window.showTextDocument(target.document, target.viewColumn, false);
+		}
+		const doc = target.document;
+		const safeLine = Math.max(0, Math.min(line, doc.lineCount - 1));
+		const text = doc.lineAt(safeLine).text;
+		const col = text.length - text.trimStart().length;
+		const pos = new vscode.Position(safeLine, col);
+		target.selection = new vscode.Selection(pos, pos);
+		target.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+	}
+
+	function ensurePanel(): TranslationPanel {
+		if (panel == null || TranslationPanel.currentPanel == null) {
+			panel = TranslationPanel.showOrCreate({
+				onDispose: () => { panel = undefined; },
+				onJumpTo: (line) => {
+					const uri = panelDocUri ?? activeEditor?.document.uri;
+					if (uri == null) { return; }
+					void jumpToLineInDoc(uri, line);
+				},
+			});
+		}
+		return panel;
+	}
+
+	function disposePanel() {
+		if (panel != null) {
+			panel.dispose();
+			panel = undefined;
+		}
+	}
+
+	// (6.2.2) commitView: mode에 따라 데코 or 패널로 결과를 라우팅
+	//   - 'right' 모드: setDecorations (활성 라인 제외)
+	//   - 'panel' 모드: 데코 클리어 + 패널 update
+	function commitView(editor: vscode.TextEditor, mode: DisplayMode, decorations: vscode.DecorationOptions[], entries: PanelEntry[]) {
+		if (mode === 'panel') {
+			editor.setDecorations(translationDecorationType, []);
+			currentDecorations = [];
+			panelDocUri = editor.document.uri;
+			const p = ensurePanel();
+			p.update(entries);
+			p.setActiveLine(activeLine);
+			return;
+		}
+		currentDecorations = decorations;
+		const filtered = currentDecorations.filter(d => d.range.start.line !== activeLine);
+		editor.setDecorations(translationDecorationType, filtered);
+	}
+
+	// (6.3) buildDecoration: 한 라인의 데코레이션 옵션 생성 ('right' 모드 전용)
 	//       padding = (단락 내 최대 폭 - 현재 라인 폭) + gap → 같은 컬럼에서 번역문이 시작
 	function buildDecoration(line: string, lineIndex: number, maxLen: number, gap: number, text: string, color?: string): vscode.DecorationOptions {
 		const padding = maxLen - getDisplayWidth(line) + gap;
@@ -319,6 +421,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const targetLanguage = _config.target_language;
 			const apiKey = _config.google_api_key;
 			const gap = _config.display_gap;
+			const mode = _config.display_mode;
 
 			if (!apiKey || apiKey.trim() === '') {
 				vscode.window.showWarningMessage('Trans Prompt: Google API key is not configured.');
@@ -330,31 +433,33 @@ export function activate(context: vscode.ExtensionContext) {
 			const lines = editor.document.getText().split('\n');
 			const paragraphs = parseParagraphs(lines);
 
-			// (4) 1차 패스: 즉시 미리보기 데코레이션을 그린다
-			//     - 같은 단락 내 라인들의 표시 폭(maxLen)을 맞춰 번역문이 같은 컬럼에서 시작하게 함
-			//     - 캐시 히트는 실제 번역, 캐시 미스는 'translating...' 플레이스홀더
+			// (4) 1차 패스: 즉시 미리보기를 그린다
+			//     - 'right' 모드: 데코레이션 (단락 내 maxLen으로 컬럼 정렬)
+			//     - 'panel' 모드: 패널 entries
+			//     캐시 히트는 실제 번역, 캐시 미스는 'translating...' 플레이스홀더
 			const previewDecorations: vscode.DecorationOptions[] = [];
+			const previewEntries: PanelEntry[] = [];
 			for (const para of paragraphs) {
 				const maxLen = Math.max(...para.map(i => getDisplayWidth(lines[i])));
 				for (const i of para) {
 					const lineText = lines[i].trim();
-					if (lineText == null) { continue; }
+					if (lineText === '') { continue; }
 					const cached = cache.get(lineText, targetLanguage);
 					if (cached) {
 						previewDecorations.push(buildDecoration(lines[i], i, maxLen, gap, cached));
+						previewEntries.push({ line: i, translated: cached });
 					} else {
 						previewDecorations.push(buildDecoration(lines[i], i, maxLen, gap, 'translating...', 'rgba(128,128,128,0.5)'));
+						previewEntries.push({ line: i, translated: 'translating…' });
 					}
 				}
 			}
-			currentDecorations = previewDecorations;
-			// 활성 라인은 입력 방해 방지를 위해 데코레이션에서 제외
-			const previewFiltered = currentDecorations.filter(d => d.range.start.line !== activeLine);
-			editor.setDecorations(translationDecorationType, previewFiltered);
+			commitView(editor, mode, previewDecorations, previewEntries);
 
-			// (5) 2차 패스 준비: 캐시 히트 라인은 최종 데코레이션에 바로 push,
+			// (5) 2차 패스 준비: 캐시 히트 라인은 최종 결과에 바로 push,
 			//     캐시 미스 라인은 batch 호출 대상으로 pending 큐에 모은다
 			const decorations: vscode.DecorationOptions[] = [];
+			const entries: PanelEntry[] = [];
 			type Pending = { rawLine: string; lineIndex: number; lineText: string; maxLen: number };
 			const pending: Pending[] = [];
 
@@ -367,6 +472,7 @@ export function activate(context: vscode.ExtensionContext) {
 					const cached = cache.get(lineText, targetLanguage);
 					if (cached != null) {
 						decorations.push(buildDecoration(lines[i], i, maxLen, gap, cached));
+						entries.push({ line: i, translated: cached });
 					} else {
 						pending.push({ rawLine: lines[i], lineIndex: i, lineText, maxLen });
 					}
@@ -398,19 +504,19 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 				}
 
-				// pending 라인들을 매핑 결과로 데코레이션화 (중복 텍스트도 같은 결과를 공유)
+				// pending 라인들을 매핑 결과로 데코레이션/엔트리화 (중복 텍스트도 같은 결과 공유)
 				for (const p of pending) {
 					const translated = translationMap.get(p.lineText) ?? '(translation error)';
 					decorations.push(buildDecoration(p.rawLine, p.lineIndex, p.maxLen, gap, translated));
+					entries.push({ line: p.lineIndex, translated });
 				}
 			}
 
 			// (7) 최종 가드: API 호출 중 사용자가 탭을 이동했거나 비활성화했다면
 			//     결과를 적용하지 않는다 (스냅샷 editor와 현재 activeEditor 비교)
 			if (editor === activeEditor && enabled == true) {
-				currentDecorations = decorations;
-				const finalFiltered = currentDecorations.filter(d => d.range.start.line !== activeLine);
-				editor.setDecorations(translationDecorationType, finalFiltered);
+				entries.sort((a, b) => a.line - b.line);
+				commitView(editor, mode, decorations, entries);
 			}
 		} finally {
 			translating = false;
@@ -420,19 +526,31 @@ export function activate(context: vscode.ExtensionContext) {
 	// (7) 이벤트 리스너 ─────────────────────────────────────────
 
 	// (7.1) 활성 에디터 변경: 새 문서로 상태를 갈아끼고 enabledDocs로 enabled 복원
+	//       editor === undefined는 webview/터미널 포커스 같은 일시 상태 — 무시 (우리 상태 그대로 유지)
+	//       panel 모드인데 새 문서가 비활성/비-md 면 패널을 비우고 안내 메시지 표시
 	vscode.window.onDidChangeActiveTextEditor(editor => {
-        activeEditor = editor;
-		activeLine = editor?.selection.active.line ?? -1;
+		if (editor == null) { return; }
+		activeEditor = editor;
+		activeLine = editor.selection.active.line;
 		currentDecorations = [];
 		cancelScheduledTranslate();
 		const key = getDocKey(editor);
 		const wasEnabled = key != null && enabledDocs.has(key);
 		enabled = wasEnabled;
 		vscode.commands.executeCommand('setContext', 'trans-prompt.enabled', wasEnabled);
-		if (editor != null) {
-			editor.setDecorations(translationDecorationType, []);
-			if (wasEnabled) {
-				translateDocument();
+		editor.setDecorations(translationDecorationType, []);
+		if (wasEnabled) {
+			translateDocument();
+		} else if (panel != null && getConfig().display_mode === 'panel') {
+			const isMd = editor.document.fileName.endsWith('.md');
+			panelDocUri = editor.document.uri;
+			if (isMd) {
+				panel.showMessage(
+					'Translation is not enabled for this document.',
+					{ label: 'Enable Translation', commandId: 'trans-prompt.enable' }
+				);
+			} else {
+				panel.showMessage('Open a Markdown (.md) document to see translations.');
 			}
 		}
     }, null, context.subscriptions);
@@ -450,6 +568,11 @@ export function activate(context: vscode.ExtensionContext) {
 		const newLine = event.selections[0].active.line;
 		if (newLine !== activeLine) {
 			activeLine = newLine;
+			// 'panel' 모드: 패널이 보여주는 문서와 현재 에디터 문서가 같을 때만 하이라이트 동기화
+			if (panel != null && panelDocUri != null
+				&& event.textEditor.document.uri.toString() === panelDocUri.toString()) {
+				panel.setActiveLine(newLine);
+			}
 			if (dirty === true && enabled === true) {
 				cancelScheduledTranslate();
 				dirty = false;
@@ -470,6 +593,9 @@ export function activate(context: vscode.ExtensionContext) {
 			scheduleTranslate();
 		}
 	}, null, context.subscriptions);
+
+	// (7.5) 정리: extension dispose 시 패널 dispose
+	context.subscriptions.push({ dispose: disposePanel });
 }
 
 // This method is called when your extension is deactivated
