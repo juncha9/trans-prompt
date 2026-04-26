@@ -21,7 +21,7 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 3. Click the 🌐 globe icon in the top-right corner to enable translation
 4. Inline translations appear beside each line — review, refine, and iterate instantly
 5. Click the ⊘ icon to disable translation and clear overlays
-![Usage](https://raw.githubusercontent.com/juncha9/trans-prompt/main/docs/imgs/architecture.png)
+![Usage](https://raw.githubusercontent.com/juncha9/trans-prompt/main/docs/imgs/transprompt_usage.png)
 
 ## 🤗 Features
 
