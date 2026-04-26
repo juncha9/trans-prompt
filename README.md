@@ -13,7 +13,7 @@
 Prompt engineering demands precision — every word in a system prompt, agent instruction, or skill definition shapes how an LLM behaves. Writing these in English yields the best results (fewer tokens, better model comprehension), but reviewing and refining English prompts can be a bottleneck for non-native speakers.
 
 Trans Prompt solves this by displaying inline translations directly beside each line of your `.md` prompt files. You can verify intent, catch ambiguities, and iterate faster — without leaving the editor or switching context.
-
+  
 ![Usage](https://raw.githubusercontent.com/juncha9/trans-prompt/main/docs/imgs/transprompt_usage.gif)
 
 ## 🤔 Usage
