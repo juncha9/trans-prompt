@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.5.1] - 2026-04-26
+
+### Fixed
+- Restored the usage demo image in the README (moved to a more visible position right under the intro)
+
 ## [1.5.0] - 2026-04-26
 
 ### Added
