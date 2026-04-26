@@ -2,7 +2,7 @@
     "name": "trans-prompt",
     "displayName": "Trans Prompt",
     "description": "Inline translation overlay for prompt engineering in VS Code.",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "publisher": "alkemic-studio",
     "license": "MIT",
     "repository": {
@@ -69,6 +69,10 @@
             {
                 "command": "trans-prompt.setMode",
                 "title": "Trans Prompt: Set Display Mode"
+            },
+            {
+                "command": "trans-prompt.setIndentMode",
+                "title": "Trans Prompt: Set Indent Mode (panel)"
             }
         ],
         "configuration": {
@@ -120,6 +124,19 @@
                         "Show translations in a side webview panel synced with editor scroll."
                     ],
                     "description": "How translations are rendered next to the original text."
+                },
+                "trans-prompt.indent_mode": {
+                    "type": "string",
+                    "default": "source",
+                    "enum": [
+                        "source",
+                        "md_section"
+                    ],
+                    "enumDescriptions": [
+                        "Indent translations to match the original line's leading whitespace.",
+                        "Indent translations by Markdown section depth (#, ##, ### …)."
+                    ],
+                    "description": "How translation rows are indented in 'panel' display mode."
                 },
                 "trans-prompt.google_api_key": {
                     "type": "string",

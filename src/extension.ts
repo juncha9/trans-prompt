@@ -5,6 +5,7 @@ import { getDisplayWidth, parseParagraphs } from './_utils';
 import { TranslationPanel, PanelEntry } from './translation-panel';
 
 type DisplayMode = 'right' | 'panel';
+type IndentMode = 'source' | 'md_section';
 
 let activeCache: TranslationCache | undefined;
 
@@ -43,6 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
 			google_api_key: config.get<string>('google_api_key', ''),
 			display_gap: config.get<number>('display_gap', 8),
 			display_mode: config.get<DisplayMode>('display_mode', 'panel'),
+			indent_mode: config.get<IndentMode>('indent_mode', 'source'),
 		};
 	}
 
@@ -216,6 +218,31 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
+	// (3.5c) setIndentMode: panel 모드의 들여쓰기 기준 (source / heading) 선택
+	const INDENT_MODES: { mode: IndentMode; label: string; detail: string }[] = [
+		{ mode: 'source', label: 'Source', detail: "Match each translation row to the original line's leading whitespace." },
+		{ mode: 'md_section', label: 'Markdown Section', detail: 'Indent rows by Markdown section depth (#, ##, ### …).' },
+	];
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('trans-prompt.setIndentMode', async () => {
+			const current = getConfig().indent_mode;
+			const items = INDENT_MODES.map(m => ({
+				label: m.label,
+				description: m.mode === current ? '(current)' : '',
+				detail: m.detail,
+				mode: m.mode,
+			}));
+			const picked = await vscode.window.showQuickPick(items, {
+				placeHolder: 'Select indent mode (panel)',
+			});
+			if (picked == null || picked.mode === current) { return; }
+			await vscode.workspace.getConfiguration('trans-prompt').update('indent_mode', picked.mode, vscode.ConfigurationTarget.Global);
+			vscode.window.showInformationMessage(`Trans Prompt: Indent mode set to ${picked.label}.`);
+			translateDocument();
+		})
+	);
+
 	// (3.6) enable: 현재 문서를 enabledDocs에 추가, 컨텍스트 키 켜고 즉시 번역
 	context.subscriptions.push(
 		vscode.commands.registerCommand('trans-prompt.enable', () => {
@@ -311,6 +338,10 @@ export function activate(context: vscode.ExtensionContext) {
 	//         activeEditor가 undefined가 되므로, 이 값으로 대상 문서를 식별한다.
 	let panel: TranslationPanel | undefined;
 	let panelDocUri: vscode.Uri | undefined;
+	// 우리가 패널을 dispose하는 경우(모드 전환, disable, extension 종료)와
+	// 사용자가 X로 직접 닫는 경우를 구분하기 위한 플래그.
+	// onDispose에서 이 플래그가 false면 사용자 액션으로 간주해 disable 명령을 실행한다.
+	let suppressNextPanelDispose = false;
 
 	async function jumpToLineInDoc(uri: vscode.Uri, line: number) {
 		// visible editors 우선, 없으면 문서를 열어서 표시
@@ -334,7 +365,18 @@ export function activate(context: vscode.ExtensionContext) {
 	function ensurePanel(): TranslationPanel {
 		if (panel == null || TranslationPanel.currentPanel == null) {
 			panel = TranslationPanel.showOrCreate({
-				onDispose: () => { panel = undefined; },
+				onDispose: () => {
+					panel = undefined;
+					// 우리가 dispose한 경우 → 플래그만 reset하고 종료
+					if (suppressNextPanelDispose) {
+						suppressNextPanelDispose = false;
+						return;
+					}
+					// 사용자가 X로 직접 닫음 → 현재 문서 disable 처리
+					if (enabled && getConfig().display_mode === 'panel') {
+						vscode.commands.executeCommand('trans-prompt.disable');
+					}
+				},
 				onJumpTo: (line) => {
 					const uri = panelDocUri ?? activeEditor?.document.uri;
 					if (uri == null) { return; }
@@ -347,6 +389,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	function disposePanel() {
 		if (panel != null) {
+			suppressNextPanelDispose = true;
 			panel.dispose();
 			panel = undefined;
 		}
@@ -433,6 +476,39 @@ export function activate(context: vscode.ExtensionContext) {
 			const lines = editor.document.getText().split('\n');
 			const paragraphs = parseParagraphs(lines);
 
+			// 들여쓰기 계산: indent_mode 설정에 따라 분기
+			//   - 'source' (기본): 원문 라인의 leading whitespace를 컬럼 수로 환산 (탭 = tabSize 칸)
+			//   - 'md_section': 마크다운 섹션 깊이 — 헤딩은 (level-1)*2, 본문은 currentLevel*2
+			//                   fenced code block(```) 안의 '#'은 헤딩으로 인식 안 함
+			const indentMode = _config.indent_mode;
+			const tabSize = typeof editor.options.tabSize === 'number' ? editor.options.tabSize : 4;
+			const indentByLine = new Array<number>(lines.length).fill(0);
+			if (indentMode === 'md_section') {
+				const INDENT_COLS_PER_LEVEL = 2;
+				let currentLevel = 0;
+				let inFence = false;
+				for (let i = 0; i < lines.length; i++) {
+					const ln = lines[i];
+					if (/^\s*```/.test(ln)) { inFence = !inFence; }
+					const m = !inFence ? ln.match(/^(#{1,6})\s+/) : null;
+					if (m != null) {
+						const level = m[1].length;
+						currentLevel = level;
+						indentByLine[i] = (level - 1) * INDENT_COLS_PER_LEVEL;
+					} else {
+						indentByLine[i] = currentLevel * INDENT_COLS_PER_LEVEL;
+					}
+				}
+			} else {
+				for (let i = 0; i < lines.length; i++) {
+					const lead = lines[i].match(/^[\t ]*/)?.[0] ?? '';
+					let count = 0;
+					for (const c of lead) { count += c === '\t' ? tabSize : 1; }
+					indentByLine[i] = count;
+				}
+			}
+			const getIndent = (lineIdx: number): number => indentByLine[lineIdx] ?? 0;
+
 			// (4) 1차 패스: 즉시 미리보기를 그린다
 			//     - 'right' 모드: 데코레이션 (단락 내 maxLen으로 컬럼 정렬)
 			//     - 'panel' 모드: 패널 entries
@@ -445,12 +521,13 @@ export function activate(context: vscode.ExtensionContext) {
 					const lineText = lines[i].trim();
 					if (lineText === '') { continue; }
 					const cached = cache.get(lineText, targetLanguage);
+					const indent = getIndent(i);
 					if (cached) {
 						previewDecorations.push(buildDecoration(lines[i], i, maxLen, gap, cached));
-						previewEntries.push({ line: i, translated: cached });
+						previewEntries.push({ line: i, translated: cached, indent });
 					} else {
 						previewDecorations.push(buildDecoration(lines[i], i, maxLen, gap, 'translating...', 'rgba(128,128,128,0.5)'));
-						previewEntries.push({ line: i, translated: 'translating…' });
+						previewEntries.push({ line: i, translated: 'translating…', indent });
 					}
 				}
 			}
@@ -472,7 +549,7 @@ export function activate(context: vscode.ExtensionContext) {
 					const cached = cache.get(lineText, targetLanguage);
 					if (cached != null) {
 						decorations.push(buildDecoration(lines[i], i, maxLen, gap, cached));
-						entries.push({ line: i, translated: cached });
+						entries.push({ line: i, translated: cached, indent: getIndent(i) });
 					} else {
 						pending.push({ rawLine: lines[i], lineIndex: i, lineText, maxLen });
 					}
@@ -508,7 +585,7 @@ export function activate(context: vscode.ExtensionContext) {
 				for (const p of pending) {
 					const translated = translationMap.get(p.lineText) ?? '(translation error)';
 					decorations.push(buildDecoration(p.rawLine, p.lineIndex, p.maxLen, gap, translated));
-					entries.push({ line: p.lineIndex, translated });
+					entries.push({ line: p.lineIndex, translated, indent: getIndent(p.lineIndex) });
 				}
 			}
 

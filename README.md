@@ -1,5 +1,13 @@
 # 🍊 Trans Prompt
 
+[![VS Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/alkemic-studio.trans-prompt?color=007ACC&logo=visual-studio-code&label=marketplace)](https://marketplace.visualstudio.com/items?itemName=alkemic-studio.trans-prompt)
+[![VS Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/alkemic-studio.trans-prompt?color=informational&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=alkemic-studio.trans-prompt)
+[![VS Marketplace Rating](https://img.shields.io/visual-studio-marketplace/r/alkemic-studio.trans-prompt?color=orange&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=alkemic-studio.trans-prompt&ssr=false#review-details)
+[![GitHub stars](https://img.shields.io/github/stars/juncha9/trans-prompt?color=f5d90a&logo=github)](https://github.com/juncha9/trans-prompt/stargazers)
+[![last commit](https://img.shields.io/github/last-commit/juncha9/trans-prompt?color=blueviolet&logo=github)](https://github.com/juncha9/trans-prompt/commits/main)
+[![license](https://img.shields.io/github/license/juncha9/trans-prompt?color=green)](./LICENSE.md)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?logo=github-sponsors)](https://github.com/sponsors/juncha9)
+
 **Inline translation overlay for prompt engineering in VS Code.**
 
 Prompt engineering demands precision — every word in a system prompt, agent instruction, or skill definition shapes how an LLM behaves. Writing these in English yields the best results (fewer tokens, better model comprehension), but reviewing and refining English prompts can be a bottleneck for non-native speakers.
@@ -13,13 +21,15 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 3. Click the 🌐 globe icon in the top-right corner to enable translation
 4. Inline translations appear beside each line — review, refine, and iterate instantly
 5. Click the ⊘ icon to disable translation and clear overlays
-![Usage](transprompt_usage.gif)
+![Usage](https://raw.githubusercontent.com/juncha9/trans-prompt/main/docs/imgs/architecture.png)
 
 ## 🤗 Features
 
 - 🔘 **Enable/Disable toggle** — Click the globe icon to enable, click again (⊘) to disable and clear overlays
 - 🪟 **Two display modes** — `panel` (default): translations in a side webview synced with the editor cursor; `right`: inline translations to the right of each line
 - 🎯 **Active-line highlight & jump** — In panel mode, the row matching the editor cursor is highlighted and centered; click any panel row to jump the editor cursor there
+- 📑 **Indent modes (panel)** — `source` (default) follows the original whitespace; `md_section` indents by Markdown heading depth (`#`, `##`, `###` …) for a TOC-like outline
+- 🔚 **Auto-disable on panel close** — Closing the panel via the X button also disables translation for the current document
 - ⏳ **Loading indicators** — Shows `translating...` placeholders while API calls are in progress
 - 💾 **Persistent cache** — Translations are cached globally, so repeated content is instant
 - 🔄 **Per-line reload** — Right-click a line to clear its cached translation and re-translate
@@ -51,6 +61,7 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 |---------|-------------|---------|
 | `trans-prompt.target_language` | Target language code (e.g., `ko`, `ja`, `zh-CN`) | `ko` |
 | `trans-prompt.display_mode` | How translations are rendered: `panel` (side webview) or `right` (inline to the right) | `panel` |
+| `trans-prompt.indent_mode` | Panel row indent: `source` (original whitespace) or `md_section` (Markdown heading depth) | `source` |
 | `trans-prompt.display_gap` | Gap (in characters) between original text and translation overlay (used in `right` mode) | `8` |
 | `trans-prompt.google_api_key` | Google Cloud Translation API key | — |
 
@@ -65,6 +76,7 @@ Trans Prompt solves this by displaying inline translations directly beside each 
 | `Trans Prompt: Clear Translation Cache` | Clear all cached translations |
 | `Trans Prompt: Set Target Language` | Select target language from a list |
 | `Trans Prompt: Set Display Mode` | Switch between `panel` and `right` display modes |
+| `Trans Prompt: Set Indent Mode (panel)` | Switch panel row indent between `source` and `md_section` |
 | `Trans Prompt: Set Display Gap` | Set gap between original text and translation (`right` mode) |
 | `Trans Prompt: Set Google API Key` | Set or update your API key |
 

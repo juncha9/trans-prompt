@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.0] - 2026-04-26
+
+### Added
+- **`trans-prompt.indent_mode` setting** — Choose how panel rows are indented: `source` (default, follows the original line's leading whitespace) or `md_section` (indents by Markdown heading depth: `#`, `##`, `###` …)
+- **`Trans Prompt: Set Indent Mode (panel)` command** — Switch between `source` and `md_section` indent modes
+
+### Changed
+- Closing the side webview panel (X button) while translation is enabled now also disables translation for the current document, instead of silently leaving translation active without a UI
+
 ## [1.4.0] - 2026-04-26
 
 ### Added

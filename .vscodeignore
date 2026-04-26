@@ -26,3 +26,5 @@ node_modules/**
 
 # Package files
 *.vsix
+
+[Dd]ocs/

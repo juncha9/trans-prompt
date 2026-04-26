@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
  * - update(entries): 라인 인덱스 → 번역문 매핑을 받아 webview HTML을 갱신
  * - 사용자가 패널을 닫으면 currentPanel = undefined로 초기화
  */
-export type PanelEntry = { line: number; translated: string };
+export type PanelEntry = { line: number; translated: string; indent?: number };
 
 export class TranslationPanel {
 	public static currentPanel: TranslationPanel | undefined;
@@ -224,6 +224,9 @@ export class TranslationPanel {
 			const translated = document.createElement('div');
 			translated.className = 'translated';
 			translated.textContent = e.translated;
+			if (e.indent && e.indent > 0) {
+				translated.style.paddingLeft = e.indent + 'ch';
+			}
 
 			row.appendChild(lineNo);
 			row.appendChild(translated);
