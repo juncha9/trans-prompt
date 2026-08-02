@@ -1,8 +1,8 @@
 {
     "name": "trans-prompt",
     "displayName": "Trans Prompt",
-    "description": "Inline translation overlay for prompt engineering in VS Code.",
-    "version": "1.5.1",
+    "description": "Read English Markdown — skills, prompts, agent docs — rendered like a preview, with translation.",
+    "version": "2.0.0",
     "publisher": "alkemic-studio",
     "license": "MIT",
     "repository": {
@@ -11,11 +11,14 @@
     },
     "icon": "icon.png",
     "scripts": {
-        "build": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
-        "test": "vscode-test",
+        "build": "node esbuild.mjs",
+        "build:prod": "node esbuild.mjs --production",
+        "watch": "node esbuild.mjs --watch",
+        "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.webview.json",
+        "test": "node esbuild.mjs --tests && node --test dist/tests/markdown.test.cjs",
         "package": "npx @vscode/vsce package",
-        "publish": "npx @vscode/vsce publish"
+        "publish": "npx @vscode/vsce publish",
+        "vscode:prepublish": "npm run typecheck && npm run build:prod"
     },
     "engines": {
         "vscode": "^1.109.0"
@@ -27,7 +30,8 @@
         "Other"
     ],
     "activationEvents": [
-        "onLanguage:markdown"
+        "onLanguage:markdown",
+        "onWebviewPanel:transPromptPanel"
     ],
     "main": "./dist/extension.js",
     "contributes": {
@@ -60,19 +64,7 @@
             },
             {
                 "command": "trans-prompt.reloadLine",
-                "title": "Trans Prompt: Reload This Line Translation"
-            },
-            {
-                "command": "trans-prompt.setGap",
-                "title": "Trans Prompt: Set Display Gap"
-            },
-            {
-                "command": "trans-prompt.setMode",
-                "title": "Trans Prompt: Set Display Mode"
-            },
-            {
-                "command": "trans-prompt.setIndentMode",
-                "title": "Trans Prompt: Set Indent Mode (panel)"
+                "title": "Trans Prompt: Reload Translation at Cursor"
             }
         ],
         "configuration": {
@@ -105,39 +97,6 @@
                         "Russian (Русский)"
                     ]
                 },
-                "trans-prompt.display_gap": {
-                    "type": "number",
-                    "default": 8,
-                    "minimum": 0,
-                    "maximum": 40,
-                    "description": "Gap (in characters) between original text and translation overlay. Used in 'right' mode."
-                },
-                "trans-prompt.display_mode": {
-                    "type": "string",
-                    "default": "panel",
-                    "enum": [
-                        "right",
-                        "panel"
-                    ],
-                    "enumDescriptions": [
-                        "Show translation to the right of each line (aligned per paragraph).",
-                        "Show translations in a side webview panel synced with editor scroll."
-                    ],
-                    "description": "How translations are rendered next to the original text."
-                },
-                "trans-prompt.indent_mode": {
-                    "type": "string",
-                    "default": "source",
-                    "enum": [
-                        "source",
-                        "md_section"
-                    ],
-                    "enumDescriptions": [
-                        "Indent translations to match the original line's leading whitespace.",
-                        "Indent translations by Markdown section depth (#, ##, ### …)."
-                    ],
-                    "description": "How translation rows are indented in 'panel' display mode."
-                },
                 "trans-prompt.google_api_key": {
                     "type": "string",
                     "default": "",
@@ -169,11 +128,17 @@
         }
     },
     "devDependencies": {
+        "@types/markdown-it": "^14.1.2",
         "@types/mocha": "^10.0.10",
         "@types/node": "^22.19.10",
         "@types/vscode": "^1.109.0",
         "@vscode/test-cli": "^0.0.12",
         "@vscode/test-electron": "^2.5.2",
+        "esbuild": "^0.28.1",
         "typescript": "^5.9.3"
+    },
+    "dependencies": {
+        "highlight.js": "^11.11.1",
+        "markdown-it": "^14.3.0"
     }
 }

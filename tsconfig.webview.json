@@ -1,0 +1,14 @@
+{
+	/* webview 코드는 브라우저 환경이다 — DOM lib이 필요하고 @types/vscode를 보면 안 된다 */
+	"compilerOptions": {
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"target": "ES2022",
+		"lib": [ "ES2022", "DOM" ],
+		"strict": true,
+		"skipLibCheck": true,
+		"types": [],
+		"noEmit": true
+	},
+	"include": [ "src/webview/**/*.ts", "src/shared/**/*.ts" ]
+}

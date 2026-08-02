@@ -12,6 +12,11 @@ samples/**
 .gitignore
 .yarnrc
 **/tsconfig.json
+tsconfig.webview.json
+esbuild.mjs
+
+# Developer-facing docs — README.md is the marketplace page, this one is not
+README_DEV.md
 
 # Build artifacts
 **/*.map
@@ -20,6 +25,7 @@ samples/**
 # Test files
 **/.vscode-test.*
 .vscode-test/**
+dist/tests/**
 
 # Dependencies
 node_modules/**

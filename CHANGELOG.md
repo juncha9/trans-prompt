@@ -1,5 +1,47 @@
 # Changelog
 
+## [2.0.0] - 2026-07-27
+
+Trans Prompt is now a **Markdown reader** rather than a line-by-line translation overlay. The side panel renders the document the way a Markdown preview would, in your language.
+
+### ⚠️ Breaking
+
+- **Removed the `right` display mode** and, with it, the `trans-prompt.display_mode`, `trans-prompt.display_gap`, and `trans-prompt.indent_mode` settings plus the `Set Display Mode`, `Set Display Gap`, and `Set Indent Mode` commands. Markdown rendering derives hierarchy from document structure, so manual indent modes no longer have a job.
+- **Translation units changed from lines to blocks**, which changes the cache key. 1.x entries that are plain single-line sentences are reused automatically (and migrated forward); the rest are re-translated once.
+- `Trans Prompt: Reload This Line Translation` is now `Trans Prompt: Reload Translation at Cursor` and operates on the block at the cursor.
+
+### Added
+
+- **Markdown rendering** — heading hierarchy, nested/ordered lists, task list checkboxes, block quotes, GFM tables with column alignment, horizontal rules, and front matter as a collapsible metadata card
+- **Syntax highlighting** for fenced code blocks across 15 languages, mapped onto the active VS Code theme's colors, with a language badge and a copy button
+- **Structure-preserving translation** — inline code, link URLs, file paths, template variables (`{{var}}`, `$ARGUMENTS`), and raw HTML are masked before the API call and restored afterward, so Markdown markers survive
+- **Editor scroll sync** — the panel now follows the editor's visible range. (1.x documented this but only synced the cursor.)
+- **Progressive rendering** — untranslated blocks show the English original and are replaced in place as translations arrive, with scroll position preserved
+- **Panel restore** — the panel survives a window restart via `WebviewPanelSerializer` and renders from cache without calling the API
+- **Retry and error classification** — 429 and 5xx are retried with backoff; auth and quota failures stop the run and tell you why, instead of filling the document with `(translation error)`
+- Unit tests for the parsing, masking, restore, and rendering layers (`npm test`)
+
+### Changed
+
+- **Fewer characters billed** — markers, URLs, and code no longer reach the API, and lines with no real prose skip it entirely. On the bundled sample this cuts characters sent by more than half.
+- Body text now uses the UI font instead of the editor's monospace, with `word-break: keep-all` for CJK line breaking
+- Single-clicking a panel block keeps focus in the panel; double-click moves focus to the editor
+- Build moved from `tsc` to `esbuild` with separate extension and webview bundles
+
+### Fixed
+
+- **Edits made while a translation was in flight could be silently dropped.** The debounce cleared the dirty flag before the run started, so a run that returned early left no record that the document had changed. Replaced with a `document.version`-based run loop that never drops a request.
+- **The panel jumped to the top on every keystroke.** Rendering rebuilt the whole DOM; it now patches only the blocks whose content changed and restores the scroll anchor.
+- **Settings edited directly in `settings.json` were ignored** — `onDidChangeConfiguration` is now subscribed.
+- **Pressing Esc in the API key prompt erased the stored key.** Cancel and "clear the key" are now distinguished.
+- `Clear Translation Cache` reported `0 entries` instead of how many it removed.
+
+### Security
+
+- The webview now runs under a strict CSP with a per-load nonce, `default-src 'none'`, and `connect-src 'none'`; styles and scripts load from the extension directory via `asWebviewUri` with `localResourceRoots` set.
+- The webview could previously ask the extension to run **any** command by id. That channel is replaced by a fixed set of intents mapped to commands on the extension side.
+- Translated text and source Markdown are both HTML-escaped before rendering; `javascript:`/`data:` link schemes are refused.
+
 ## [1.5.1] - 2026-04-26
 
 ### Fixed

@@ -1,0 +1,81 @@
+/*
+ * highlight.js 토큰 클래스 → VSCode 테마 색 매핑.
+ *
+ * VSCode는 등록된 테마 색을 --vscode-*로 웹뷰에 주입하지만 TextMate 토큰색은 노출하지 않는다.
+ * 가장 가까운 대용품이 --vscode-charts-* — 테마가 실제로 정의하는 값이라 라이트/다크 양쪽에서
+ * hue가 맞고, 하드코딩 hex를 하나도 두지 않아도 된다.
+ */
+
+.hljs {
+	color: var(--vscode-editor-foreground);
+}
+
+.hljs-comment,
+.hljs-quote {
+	color: var(--vscode-descriptionForeground);
+	font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag,
+.hljs-name {
+	color: var(--vscode-charts-purple);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-meta .hljs-string,
+.hljs-template-tag {
+	color: var(--vscode-charts-orange);
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+	color: var(--vscode-charts-green);
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-selector-id {
+	color: var(--vscode-charts-yellow);
+}
+
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-built_in,
+.hljs-selector-class {
+	color: var(--vscode-charts-blue);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-property {
+	color: var(--vscode-charts-lines, var(--vscode-charts-blue));
+}
+
+.hljs-meta,
+.hljs-params {
+	color: var(--vscode-descriptionForeground);
+}
+
+.hljs-deletion {
+	color: var(--vscode-charts-red);
+}
+
+.hljs-addition {
+	color: var(--vscode-charts-green);
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: 600;
+}

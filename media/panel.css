@@ -1,0 +1,58 @@
+/*
+ * 패널 셸 — 리셋, 테마 파생 변수, 빈/안내 상태.
+ * 문서 본문 타이포그래피는 markdown.css가 담당한다.
+ *
+ * CSP가 `style-src ${cspSource}`로 잠겨 있어 인라인 <style>도 style= 속성도 쓸 수 없다.
+ */
+
+:root {
+	/* 테마가 제공하지 않는 색은 foreground에서 파생시킨다 — 하드코딩 hex를 두지 않기 위해 */
+	--tp-hairline: color-mix(in srgb, var(--vscode-foreground) 16%, transparent);
+	--tp-tint-1: color-mix(in srgb, var(--vscode-foreground) 4%, transparent);
+	--tp-tint-2: color-mix(in srgb, var(--vscode-foreground) 7%, transparent);
+	--tp-quote-border: var(--vscode-textBlockQuote-border, color-mix(in srgb, var(--vscode-foreground) 30%, transparent));
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	color: var(--vscode-editor-foreground);
+	background: var(--vscode-editor-background);
+}
+
+.empty {
+	color: var(--vscode-descriptionForeground);
+	font-family: var(--vscode-font-family);
+	font-size: var(--vscode-font-size);
+	white-space: pre-line;
+	line-height: 1.6em;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	gap: 18px;
+	min-height: 80vh;
+	padding: 24px;
+}
+
+.empty .action-btn {
+	font-family: inherit;
+	font-size: var(--vscode-font-size);
+	background: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	border: 1px solid var(--vscode-button-border, transparent);
+	padding: 6px 16px;
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+.empty .action-btn:hover {
+	background: var(--vscode-button-hoverBackground);
+}
+
+.empty .action-btn:focus-visible {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: 2px;
+}

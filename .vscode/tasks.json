@@ -2,9 +2,9 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "watch",
 			"type": "npm",
 			"script": "watch",
-			"problemMatcher": "$tsc-watch",
 			"isBackground": true,
 			"presentation": {
 				"reveal": "never"
@@ -12,11 +12,29 @@
 			"group": {
 				"kind": "build",
 				"isDefault": true
+			},
+			"problemMatcher": {
+				"owner": "esbuild",
+				"fileLocation": "absolute",
+				"pattern": {
+					"regexp": "^(.+):(\\d+):(\\d+): (error|warning): (.+)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"severity": 4,
+					"message": 5
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^\\[esbuild\\] build started$",
+					"endsPattern": "^\\[esbuild\\] build finished"
+				}
 			}
 		},
 		{
+			"label": "typecheck",
 			"type": "npm",
-			"script": "compile",
+			"script": "typecheck",
 			"problemMatcher": "$tsc",
 			"group": "build"
 		}

@@ -1,0 +1,472 @@
+/*
+ * 번역문을 md preview 수준으로 읽히게 하는 타이포그래피.
+ *
+ * 규칙 두 가지:
+ *  - 하드코딩 색 금지. 테마가 안 주는 값은 color-mix로 foreground에서 파생시킨다.
+ *  - style= 속성 금지. CSP가 인라인 style을 막으므로 정렬/깊이는 전부 클래스와 data 속성으로.
+ */
+
+/*
+ * 3컬럼 그리드 — [여백 | 본문 | 여백].
+ *
+ * 본문은 가운데 컬럼에 갇히고, 코드/표만 `grid-column: 1 / -1`로 양쪽 여백까지 쓴다.
+ * max-width + margin auto로는 자식이 부모보다 넓어질 수 없어서 이 구조가 필요하다.
+ * 음수 마진 + 100vw 계산으로도 넓힐 수 있지만, 100vw는 세로 스크롤바 폭을 포함해
+ * 가로 스크롤바가 따라 생긴다. 그리드는 뷰포트 값을 안 쓰므로 그 오차가 없다.
+ *
+ * 주의: 그리드에서는 형제 간 margin collapse가 없다 — 블록 간 간격은 한쪽(아래)에만 줘야
+ * 위아래가 합산되지 않는다.
+ */
+.reader {
+	display: grid;
+	/* 가운데 컬럼 상한은 한국어 한 줄 60자 안쪽. 이보다 길어지면 다음 줄 시작점을 놓친다 */
+	grid-template-columns: 1fr min(58rem, 100%) 1fr;
+	/* 마지막 블록도 화면 중앙으로 스크롤될 수 있어야 커서 싱크가 문서 끝에서 안 깨진다 */
+	padding: 18px 26px 45vh;
+	/* 본문은 UI 폰트. 에디터 고정폭으로 한국어 문단을 읽으면 자간이 늘어져 가독성이 급락한다 */
+	font-family: var(--vscode-font-family);
+	font-size: var(--vscode-font-size);
+	line-height: 1.78;
+	/* 한국어는 어절 중간에서 자르면 안 되고, 라틴 장문 단어만 강제로 접는다 */
+	word-break: keep-all;
+	overflow-wrap: break-word;
+}
+
+.reader > * {
+	grid-column: 2;
+}
+
+/*
+ * 전체 폭으로 넘기는 블록 — 최상위 코드/표만.
+ *
+ * 목록(depth > 0)이나 인용(quote > 0) 안의 것까지 넘기면 들여쓰기가 끊겨 어느 항목에
+ * 속한 코드인지 알 수 없게 된다.
+ * 좌측 margin/padding은 되돌린다 — 그대로 두면 왼쪽만 12px 더 나가 .reader 좌우 패딩에
+ * 대해 비대칭이 된다.
+ */
+.reader > .tp-block[data-kind="code"][data-depth="0"][data-quote="0"],
+.reader > .tp-block[data-kind="table"][data-depth="0"][data-quote="0"],
+.reader > .tp-block[data-kind="html"][data-depth="0"][data-quote="0"] {
+	grid-column: 1 / -1;
+	margin-left: 0;
+	padding-left: 0;
+}
+
+.tp-block {
+	position: relative;
+	scroll-margin-top: 18px;
+	border-left: 2px solid transparent;
+	padding-left: 10px;
+	margin-left: -12px;
+	border-radius: 2px;
+	transition: background-color 0.08s linear;
+}
+
+.tp-block:hover {
+	background: var(--vscode-list-hoverBackground);
+}
+
+.tp-block.active {
+	background: var(--vscode-list-activeSelectionBackground, var(--vscode-editor-selectionBackground));
+	border-left-color: var(--vscode-focusBorder, var(--tp-hairline));
+}
+
+/* 번역이 아직 안 온 블록 — 원문이 그대로 보이는 상태임을 흐리게 알린다 */
+.tp-block[data-pending="true"] {
+	opacity: 0.62;
+}
+
+/*
+ * 블록 안쪽 첫/마지막 요소의 마진은 죽인다 — hover·active 배경이 텍스트 없는 마진 영역까지
+ * 칠해지면 강조 범위가 실제 블록보다 커 보인다. 블록 사이 간격은 아래 섹션이 담당한다.
+ */
+.tp-block > :first-child {
+	margin-top: 0;
+}
+
+.tp-block > :last-child {
+	margin-bottom: 0;
+}
+
+/* ── 블록 사이 간격 ─────────────────────────────────────── */
+
+/*
+ * 간격은 전부 "뒤 블록의 margin-top"으로만 정한다.
+ *
+ * .reader가 그리드라 형제 마진이 상쇄되지 않는다. 앞 블록의 아래 마진과 뒤 블록의 위 마진을
+ * 둘 다 주면 값이 합산돼, 같은 간격이 앞 블록 종류마다 달라진다.
+ * 그래서 아래 마진은 어디에도 두지 않고, "앞에 무엇이 왔는지"에 따른 예외만 인접 형제
+ * 조합자로 덮는다.
+ */
+.tp-block[data-kind="heading"] { margin-top: 1.55em; }
+.tp-block[data-kind="paragraph"] { margin-top: 0.85em; }
+.tp-block[data-kind="list_item"] { margin-top: 0.34em; }
+.tp-block[data-kind="table"] { margin-top: 1.15em; }
+.tp-block[data-kind="hr"] { margin-top: 1.7em; }
+/* html은 원문을 pre로 그대로 보여줘 코드 블록과 같은 덩어리로 읽힌다 */
+.tp-block[data-kind="code"],
+.tp-block[data-kind="html"] { margin-top: 1.15em; }
+
+/* 문서 첫 블록 위에는 .reader의 padding만 있어야 한다 */
+.reader > .tp-block:first-child {
+	margin-top: 0;
+}
+
+/* 제목과 그 아래 첫 블록은 붙어야 제목이 뒤따르는 내용에 속한 것으로 읽힌다 */
+.tp-block[data-kind="heading"] + .tp-block {
+	margin-top: 0.5em;
+}
+
+/* 제목이 연달아 나오면(h2 다음 h3) 섹션 경계가 아니라 한 덩어리의 계층이다 */
+.tp-block[data-kind="heading"] + .tp-block[data-kind="heading"] {
+	margin-top: 0.75em;
+}
+
+/*
+ * 목록이 시작되는 자리는 항목 간 간격(0.34em)보다 넓게 벌려 덩어리로 보이게 한다.
+ * 제목 뒤는 제외한다 — 위 0.5em 규칙이 더 좁고, 그게 의도한 값이다.
+ *
+ * :first-of-type은 여기서 쓸 수 없다. 모든 블록이 div라서 "타입 중 첫째"는 목록의 첫 항목이
+ * 아니라 문서 전체의 첫 블록 하나만 가리킨다.
+ */
+.tp-block:not([data-kind="list_item"]):not([data-kind="heading"]) + .tp-block[data-kind="list_item"] {
+	margin-top: 0.9em;
+}
+
+/* front matter는 문서 헤더라 본문 시작 전에 한 번 더 끊어준다 */
+.tp-block[data-kind="frontmatter"] + .tp-block {
+	margin-top: 2.1em;
+}
+
+/*
+ * 한 인용 안에서 이어지는 블록은 마진으로 떼지 않는다 — 블록마다 배경을 칠하는 구조라
+ * 마진이 들어가면 인용 띠가 조각나 여러 인용처럼 보인다. 줄 간 숨통은 마진이 아니라
+ * .tp-block:not([data-quote="0"])의 상하 padding이 만든다.
+ *
+ * .reader를 앞에 붙인 건 위 목록 시작 규칙과 명시도를 맞추기 위한 것이다 — 없으면
+ * 인용 안에서 목록이 시작될 때 그 규칙이 이겨 배경이 끊긴다.
+ */
+.reader > .tp-block:not([data-quote="0"]) + .tp-block:not([data-quote="0"]) {
+	margin-top: 0;
+}
+
+/* ── 인용문 깊이 ─────────────────────────────────────────── */
+
+.tp-block[data-quote="1"] { border-left-color: var(--tp-quote-border); padding-left: 14px; }
+.tp-block[data-quote="2"] { border-left-color: var(--tp-quote-border); padding-left: 28px; }
+.tp-block[data-quote="3"],
+.tp-block[data-quote="4"] { border-left-color: var(--tp-quote-border); padding-left: 42px; }
+
+.tp-block:not([data-quote="0"]) {
+	background: var(--vscode-textBlockQuote-background, var(--tp-tint-1));
+	color: var(--vscode-descriptionForeground);
+	/* 인용 안 블록 간 간격 담당 — 마진을 쓰면 배경 띠가 끊긴다 */
+	padding-top: 0.22em;
+	padding-bottom: 0.22em;
+}
+
+/* ── 헤딩 ───────────────────────────────────────────────── */
+
+.reader h1,
+.reader h2,
+.reader h3,
+.reader h4,
+.reader h5,
+.reader h6 {
+	/* 700은 UI 폰트 + 한글에서 획이 뭉갠다 */
+	font-weight: 600;
+	line-height: 1.34;
+	/* 앞뒤 간격은 블록 레벨에서만 준다 — 여기 마진은 블록 내부 리셋에 먹혀 어차피 죽는다 */
+	margin: 0;
+}
+
+.reader h1 { font-size: 1.9em; }
+.reader h2 { font-size: 1.46em; }
+.reader h3 { font-size: 1.22em; }
+.reader h4 { font-size: 1.05em; }
+.reader h5 { font-size: 0.95em; }
+
+.reader h6 {
+	font-size: 0.9em;
+	color: var(--vscode-descriptionForeground);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.reader h1,
+.reader h2 {
+	border-bottom: 1px solid var(--tp-hairline);
+	padding-bottom: 0.28em;
+}
+
+/* ── 문단 / 리스트 ───────────────────────────────────────── */
+
+/* 한 블록 안에 p가 둘 이상 들어오는 경우에만 살아남는 값 — 블록 간 간격은 위 섹션이 담당 */
+.reader p {
+	margin: 0 0 0.85em;
+}
+
+.tp-block[data-kind="list_item"] {
+	display: flex;
+	gap: 0.55em;
+	align-items: baseline;
+}
+
+.tp-block[data-kind="list_item"][data-depth="1"] { padding-left: 1.7em; }
+.tp-block[data-kind="list_item"][data-depth="2"] { padding-left: 3.4em; }
+.tp-block[data-kind="list_item"][data-depth="3"] { padding-left: 5.1em; }
+.tp-block[data-kind="list_item"][data-depth="4"],
+.tp-block[data-kind="list_item"][data-depth="5"],
+.tp-block[data-kind="list_item"][data-depth="6"] { padding-left: 6.8em; }
+
+/*
+ * 리스트 항목 안의 두 번째 이후 문단/코드는 별도 블록으로 나오므로 항목 본문에 맞춰 들여쓴다.
+ *
+ * depth 계산이 한 단계 어긋나기 쉬운 지점: 항목 자체는 `listStack.length - 1`을 depth로 갖고,
+ * 그 안의 연속 문단은 `listStack.length`를 갖는다. 즉 depth d인 문단은 depth d-1인 항목에 속한다.
+ * 따라서 정렬 위치는 (d-1) * 1.7em + 마커 폭(1.3em + gap 0.55em)이다.
+ */
+.tp-block[data-kind="paragraph"][data-depth="1"],
+.tp-block[data-kind="code"][data-depth="1"] { padding-left: 1.85em; }
+.tp-block[data-kind="paragraph"][data-depth="2"],
+.tp-block[data-kind="code"][data-depth="2"] { padding-left: 3.55em; }
+.tp-block[data-kind="paragraph"][data-depth="3"],
+.tp-block[data-kind="code"][data-depth="3"] { padding-left: 5.25em; }
+
+.tp-marker {
+	flex-shrink: 0;
+	min-width: 1.3em;
+	color: var(--vscode-descriptionForeground);
+	user-select: none;
+}
+
+.tp-li-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.tp-check {
+	flex-shrink: 0;
+	width: 1em;
+	height: 1em;
+	margin-right: 0.3em;
+	border: 1px solid var(--vscode-checkbox-border, var(--tp-hairline));
+	border-radius: 3px;
+	background: var(--vscode-checkbox-background, transparent);
+	display: inline-block;
+	position: relative;
+	top: 0.12em;
+}
+
+.tp-check[data-checked="true"] {
+	background: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+	border-color: transparent;
+}
+
+.tp-check[data-checked="true"]::after {
+	content: '\2713';
+	position: absolute;
+	inset: 0;
+	font-size: 0.8em;
+	line-height: 1.25em;
+	text-align: center;
+	color: var(--vscode-editor-background);
+}
+
+/* ── 코드 ───────────────────────────────────────────────── */
+
+.tp-block[data-kind="code"] pre,
+.reader pre.tp-raw {
+	margin: 0;
+	/* 위쪽은 언어 배지/복사 버튼이 앉는 자리라 좌우보다 넉넉히 */
+	padding: 14px 14px 12px;
+	overflow-x: auto;
+	border: 1px solid var(--tp-hairline);
+	border-radius: 5px;
+	background: var(--vscode-textCodeBlock-background, var(--tp-tint-2));
+	font-family: var(--vscode-editor-font-family);
+	font-size: calc(var(--vscode-editor-font-size) * 0.95);
+	line-height: 1.62;
+	tab-size: 4;
+	/* 코드 안에서는 한국어 줄바꿈 규칙을 끈다 */
+	word-break: normal;
+}
+
+.tp-code-lang {
+	position: absolute;
+	top: 2px;
+	right: 8px;
+	font-family: var(--vscode-editor-font-family);
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground);
+	pointer-events: none;
+}
+
+.tp-code-copy {
+	position: absolute;
+	top: 4px;
+	right: 6px;
+	opacity: 0;
+	transition: opacity 0.1s linear;
+	background: var(--vscode-toolbar-hoverBackground, var(--tp-tint-2));
+	color: var(--vscode-foreground);
+	border: 0;
+	border-radius: 4px;
+	padding: 2px 7px;
+	font-family: inherit;
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.tp-block[data-kind="code"]:hover .tp-code-copy,
+.tp-block[data-kind="code"]:focus-within .tp-code-copy {
+	opacity: 1;
+}
+
+/* 복사 버튼이 나타나면 언어 배지와 자리가 겹치므로 교대시킨다 */
+.tp-block[data-kind="code"]:hover .tp-code-lang,
+.tp-block[data-kind="code"]:focus-within .tp-code-lang {
+	opacity: 0;
+}
+
+.reader :not(pre) > code {
+	font-family: var(--vscode-editor-font-family);
+	font-size: 0.9em;
+	padding: 0.12em 0.36em;
+	border-radius: 3px;
+	/* 긴 인라인 코드가 컨테이너를 밀어내지 않게 한다 */
+	white-space: break-spaces;
+	word-break: break-all;
+	color: var(--vscode-textPreformat-foreground);
+	background: var(--vscode-textPreformat-background, var(--tp-tint-2));
+}
+
+/* ── 표 ─────────────────────────────────────────────────── */
+
+.tp-table-scroll {
+	overflow-x: auto;
+}
+
+.reader table {
+	border-collapse: collapse;
+	width: max-content;
+	min-width: 100%;
+	font-size: 0.95em;
+}
+
+.reader th,
+.reader td {
+	border: 1px solid var(--tp-hairline);
+	padding: 6px 10px;
+	vertical-align: top;
+	text-align: left;
+}
+
+.reader thead th {
+	background: var(--tp-tint-2);
+	font-weight: 600;
+}
+
+/* zebra는 foreground 파생이라 라이트/다크 양쪽에서 안전하다 */
+.reader tbody tr:nth-child(even) {
+	background: var(--tp-tint-1);
+}
+
+.reader .ta-center { text-align: center; }
+.reader .ta-right { text-align: right; }
+
+/* ── front matter ───────────────────────────────────────── */
+
+.tp-fm {
+	/* 본문과의 간격은 "블록 사이 간격" 섹션이 뒤 블록의 margin-top으로 준다 */
+	margin: 0;
+	border: 1px solid var(--tp-hairline);
+	border-radius: 6px;
+	background: var(--tp-tint-1);
+	overflow: hidden;
+}
+
+.tp-fm > summary {
+	cursor: pointer;
+	list-style: none;
+	padding: 10px 14px;
+	color: var(--vscode-descriptionForeground);
+	font-size: 0.9em;
+}
+
+.tp-fm > summary::-webkit-details-marker {
+	display: none;
+}
+
+.tp-fm-name {
+	font-family: var(--vscode-editor-font-family);
+	font-weight: 600;
+	color: var(--vscode-foreground);
+}
+
+.tp-fm-grid {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	/* 행 간격이 4px일 때 key/value가 한 덩어리로 뭉쳐 보여 행 구분이 안 됐다 */
+	gap: 8px 18px;
+	padding: 10px 14px 14px;
+	border-top: 1px solid var(--tp-hairline);
+	font-size: 0.94em;
+	line-height: 1.6;
+}
+
+.tp-fm-key {
+	font-family: var(--vscode-editor-font-family);
+	font-size: 0.88em;
+	color: var(--vscode-descriptionForeground);
+}
+
+/* ── 인라인 ─────────────────────────────────────────────── */
+
+.reader hr {
+	border: 0;
+	border-top: 1px solid var(--tp-hairline);
+	margin: 0;
+}
+
+.reader a {
+	color: var(--vscode-textLink-foreground);
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.reader a:hover {
+	color: var(--vscode-textLink-activeForeground);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.reader a.tp-link-blocked {
+	color: var(--vscode-errorForeground);
+	text-decoration: line-through dotted;
+	cursor: not-allowed;
+}
+
+.reader strong {
+	font-weight: 600;
+}
+
+.reader del {
+	text-decoration: line-through;
+	text-decoration-thickness: 1px;
+	opacity: 0.72;
+}
+
+.tp-img {
+	color: var(--vscode-descriptionForeground);
+	font-style: italic;
+}
+
+.tp-img::before {
+	content: '\1F5BC\FE0F  ';
+}
+
+/* 번역기가 잃어버려 문말에 되붙인 조각 */
+.tp-orphan {
+	opacity: 0.8;
+}
